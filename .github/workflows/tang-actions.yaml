@@ -62,3 +62,6 @@ jobs:
           DATABASE_USER: pulp
           DATABASE_NAME: pulp
           DATABASE_PASSWORD: password
+          SERVER_URL: http://localhost:8087
+          SERVER_USERNAME: admin
+          SERVER_PASSWORD: password

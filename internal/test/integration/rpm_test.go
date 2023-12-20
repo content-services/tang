@@ -18,10 +18,13 @@ type RpmSuite struct {
 	client     *zestwrapper.RpmZest
 	tangy      tangy.Tangy
 	domainName string
+	remoteHref string
+	repoHref   string
 }
 
 const testRepoName = "rpm modular"
-const testRepoURL = "https://fixtures.pulpproject.org/rpm-modular/"
+const testRepoURL = "https://jlsherrill.fedorapeople.org/fake-repos/revision/one/"
+const testRepoURLTwo = "https://jlsherrill.fedorapeople.org/fake-repos/revision/two/"
 
 func (r *RpmSuite) CreateTestRepository(t *testing.T) {
 	domainName := RandStringBytes(10)
@@ -33,7 +36,21 @@ func (r *RpmSuite) CreateTestRepository(t *testing.T) {
 	repoHref, remoteHref, err := r.client.CreateRepository(domainName, testRepoName, testRepoURL)
 	require.NoError(t, err)
 
+	r.repoHref = repoHref
+	r.remoteHref = remoteHref
+
 	syncTask, err := r.client.SyncRpmRepository(repoHref, remoteHref)
+	require.NoError(t, err)
+
+	_, err = r.client.PollTask(syncTask)
+	require.NoError(t, err)
+}
+
+func (r *RpmSuite) UpdateTestRepository(t *testing.T, url string) {
+	err := r.client.UpdateRemote(r.remoteHref, url)
+	require.NoError(t, err)
+
+	syncTask, err := r.client.SyncRpmRepository(r.repoHref, r.remoteHref)
 	require.NoError(t, err)
 
 	_, err = r.client.PollTask(syncTask)
@@ -51,7 +68,7 @@ func TestRpmSuite(t *testing.T) {
 		Port:     dbConfig.Port,
 		User:     dbConfig.User,
 		Password: dbConfig.Password,
-	}, tangy.Logger{Enabled: false})
+	}, tangy.Logger{})
 	require.NoError(t, err)
 
 	r := RpmSuite{}
@@ -64,12 +81,51 @@ func TestRpmSuite(t *testing.T) {
 func (r *RpmSuite) TestRpmRepositoryVersionPackageSearch() {
 	resp, err := r.client.GetRpmRepositoryByName(r.domainName, testRepoName)
 	require.NoError(r.T(), err)
-	versionHref := resp.LatestVersionHref
-	require.NotNil(r.T(), versionHref)
+	firstVersionHref := resp.LatestVersionHref
+	require.NotNil(r.T(), firstVersionHref)
 
-	search, err := r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*versionHref}, "ninja")
+	// Search first repository version
+	search, err := r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*firstVersionHref}, "bea", 100)
 	assert.NoError(r.T(), err)
-	assert.Equal(r.T(), search[0].Name, "ninja-build")
+	assert.Equal(r.T(), search[0].Name, "bear")
+	search, err = r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*firstVersionHref}, "cam", 100)
+	assert.NoError(r.T(), err)
+	assert.Empty(r.T(), search)
+
+	// Create second repository version
+	r.UpdateTestRepository(r.T(), testRepoURLTwo)
+	resp, err = r.client.GetRpmRepositoryByName(r.domainName, testRepoName)
+	require.NoError(r.T(), err)
+	secondVersionHref := resp.LatestVersionHref
+	require.NotNil(r.T(), secondVersionHref)
+
+	// Search second repository version, should have new package
+	search, err = r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*secondVersionHref}, "bea", 100)
+	assert.NoError(r.T(), err)
+	assert.Equal(r.T(), search[0].Name, "bear")
+	search, err = r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*secondVersionHref}, "cam", 100)
+	assert.NoError(r.T(), err)
+	assert.Equal(r.T(), search[0].Name, "camel")
+
+	// Re-search the first version, should be the same
+	search, err = r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*firstVersionHref}, "bea", 100)
+	assert.NoError(r.T(), err)
+	assert.Equal(r.T(), search[0].Name, "bear")
+	search, err = r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*firstVersionHref}, "cam", 100)
+	assert.NoError(r.T(), err)
+	assert.Empty(r.T(), search)
+
+	// Search both versions
+	search, err = r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*firstVersionHref, *secondVersionHref}, "a", 100)
+	assert.NoError(r.T(), err)
+	assert.Len(r.T(), search, 2)
+	assert.Equal(r.T(), search[0].Name, "bear")
+	assert.Equal(r.T(), search[1].Name, "camel")
+
+	// Test search limit
+	search, err = r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*secondVersionHref}, "a", 1)
+	assert.NoError(r.T(), err)
+	assert.Len(r.T(), search, 1)
 }
 
 func RandStringBytes(n int) string {

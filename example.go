@@ -27,6 +27,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+	defer t.Close()
 
 	// Call helper function that creates and syncs a repository
 	versionHref, err := CreateRepositoryVersion()
@@ -35,8 +36,8 @@ func main() {
 		return
 	}
 
-	// Use Tangy to search for RPMs, by name, that are associated to a specific repository version
-	rows, err := t.RpmRepositoryVersionPackageSearch(context.Background(), []string{versionHref}, "ninja")
+	// Use Tangy to search for RPMs, by name, that are associated to a specific repository version, returning up to the first 100 results
+	rows, err := t.RpmRepositoryVersionPackageSearch(context.Background(), []string{versionHref}, "ninja", 100)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -58,7 +59,7 @@ func CreateRepositoryVersion() (versionHref string, err error) {
 		DownloadPolicy: "on_demand",
 	})
 
-	domainName := "example_domain"
+	domainName := "example-domain"
 
 	// Create domain and repository, then sync repository, to create a new repository version with rpm packages
 	_, err = rpmZest.LookupOrCreateDomain(domainName)

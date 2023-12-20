@@ -9,7 +9,7 @@ database:
 # Configuration options for the pulp server
 server:
   url: "http://localhost:8087"
-  username: "pulp"
+  username: "admin"
   password: "password"
   storage_type: "local"
   download_policy: "on_demand"

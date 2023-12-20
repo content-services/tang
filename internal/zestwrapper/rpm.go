@@ -116,6 +116,17 @@ func (r *RpmZest) CreateRepository(domain, name, url string) (repoHref string, r
 	return *resp.PulpHref, *remoteResponse.PulpHref, nil
 }
 
+func (r *RpmZest) UpdateRemote(remoteHref string, url string) error {
+	_, httpResp, err := r.client.RemotesRpmAPI.RemotesRpmRpmPartialUpdate(r.ctx, remoteHref).PatchedrpmRpmRemote(zest.PatchedrpmRpmRemote{Url: &url}).Execute()
+	if httpResp != nil {
+		defer httpResp.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *RpmZest) SyncRpmRepository(rpmRpmRepositoryHref string, remoteHref string) (string, error) {
 	rpmRepositoryHref := *zest.NewRpmRepositorySyncURL()
 	rpmRepositoryHref.SetRemote(remoteHref)

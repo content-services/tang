@@ -24,10 +24,11 @@ t, err := tangy.New(dbConfig, tangy.Logger{Enabled: false})
 if err != nil {
     return err
 }
+defer t.Close()
 
-// Use Tangy to search for RPMs, by name, that are associated to a specific repository version
+// Use Tangy to search for RPMs, by name, that are associated to a specific repository version, returning up to the first 100 results
 versionHref := "/pulp/e1c6bee3/api/v3/repositories/rpm/rpm/018c1c95-4281-76eb-b277-842cbad524f4/versions/1/"
-rows, err := t.RpmRepositoryVersionPackageSearch(context.Background(), []string{versionHref}, "ninja")
+rows, err := t.RpmRepositoryVersionPackageSearch(context.Background(), []string{versionHref}, "ninja", 100)
 if err != nil {
 return err
 }
@@ -57,3 +58,6 @@ The default values provided in config.yaml.example will work with this server.
 
 #### Clean container volumes
 `make compose-clean`
+
+### Mocking
+Tangy also exports a mock interface you can regenerate using the [mockery](https://github.com/vektra/mockery) tool.

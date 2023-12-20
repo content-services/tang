@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/content-services/zest/release/v2023 v2023.11.1701177874
+	github.com/google/uuid v1.4.0
 	github.com/jackc/pgx-zerolog v0.0.0-20230315001418-f978528409eb
 	github.com/jackc/pgx/v5 v5.5.1
 	github.com/rs/zerolog v1.31.0
@@ -32,6 +33,7 @@ require (
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect

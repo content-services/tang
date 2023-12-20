@@ -50,6 +50,13 @@ type tangyImpl struct {
 	logger Logger
 }
 
+//go:generate mockery --name Tangy --filename tangy_mock.go --inpackage
 type Tangy interface {
-	RpmRepositoryVersionPackageSearch(ctx context.Context, hrefs []string, search string) ([]RpmPackageSearch, error)
+	RpmRepositoryVersionPackageSearch(ctx context.Context, hrefs []string, search string, limit int) ([]RpmPackageSearch, error)
+	Close()
+}
+
+// Close closes the DB connection pool
+func (t *tangyImpl) Close() {
+	t.pool.Close()
 }
