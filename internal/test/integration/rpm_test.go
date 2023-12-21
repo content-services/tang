@@ -8,6 +8,8 @@ import (
 	"github.com/content-services/tang/internal/config"
 	"github.com/content-services/tang/internal/zestwrapper"
 	"github.com/content-services/tang/pkg/tangy"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -68,7 +70,7 @@ func TestRpmSuite(t *testing.T) {
 		Port:     dbConfig.Port,
 		User:     dbConfig.User,
 		Password: dbConfig.Password,
-	}, tangy.Logger{})
+	}, tangy.Logger{Enabled: true, Logger: &log.Logger, LogLevel: zerolog.LevelDebugValue})
 	require.NoError(t, err)
 
 	r := RpmSuite{}
@@ -122,10 +124,30 @@ func (r *RpmSuite) TestRpmRepositoryVersionPackageSearch() {
 	assert.Equal(r.T(), search[0].Name, "bear")
 	assert.Equal(r.T(), search[1].Name, "camel")
 
+	// Create third repository version to remove new package
+	r.UpdateTestRepository(r.T(), testRepoURL)
+	resp, err = r.client.GetRpmRepositoryByName(r.domainName, testRepoName)
+	require.NoError(r.T(), err)
+	thirdVersionHref := resp.LatestVersionHref
+	require.NotNil(r.T(), thirdVersionHref)
+
+	// Search third repository version, should not have new package
+	search, err = r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*thirdVersionHref}, "bea", 100)
+	assert.NoError(r.T(), err)
+	assert.Equal(r.T(), search[0].Name, "bear")
+	search, err = r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*thirdVersionHref}, "cam", 100)
+	assert.NoError(r.T(), err)
+	assert.Empty(r.T(), search)
+
 	// Test search limit
 	search, err = r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*secondVersionHref}, "a", 1)
 	assert.NoError(r.T(), err)
 	assert.Len(r.T(), search, 1)
+
+	// Test search empty list
+	search, err = r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{}, "a", 1)
+	assert.NoError(r.T(), err)
+	assert.Len(r.T(), search, 0)
 }
 
 func RandStringBytes(n int) string {
