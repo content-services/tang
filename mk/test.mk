@@ -1,0 +1,3 @@
+.PHONY: test-integration
+test-integration: ## Run tests for ci
+	CONFIG_PATH="$(PROJECT_DIR)/configs/" go test $(MOD_VENDOR) ./internal/test/integration/...

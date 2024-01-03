@@ -1,0 +1,15 @@
+# Configuration options for the pulp database
+database:
+  name: "pulp"
+  host: "localhost"
+  port: "5434"
+  user: "pulp"
+  password: "password"
+
+# Configuration options for the pulp server
+server:
+  url: "http://localhost:8087"
+  username: "admin"
+  password: "password"
+  storage_type: "local"
+  download_policy: "on_demand"
