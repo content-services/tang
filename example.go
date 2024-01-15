@@ -37,14 +37,43 @@ func main() {
 	}
 
 	// Use Tangy to search for RPMs, by name, that are associated to a specific repository version, returning up to the first 100 results
-	rows, err := t.RpmRepositoryVersionPackageSearch(context.Background(), []string{versionHref}, "ninja", 100)
+	rows, err := t.RpmRepositoryVersionPackageSearch(context.Background(), []string{versionHref}, "bear", 100)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
+	fmt.Printf("\nPackages\n==================\n")
 	for _, row := range rows {
 		fmt.Printf("\nName: %v \nSummary: %v", row.Name, row.Summary)
+	}
+	fmt.Printf("\n")
+
+	// Use Tangy to search for RPM package groups, by name, that are associated to a specific repository version, returning up to the first 100 results
+	var pkgGroups []tangy.RpmPackageGroupSearch
+	pkgGroups, err = t.RpmRepositoryVersionPackageGroupSearch(context.Background(), []string{versionHref}, "bir", 100)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Printf("\nPackage Groups\n==================\n")
+	for _, row := range pkgGroups {
+		fmt.Printf("\nName: %v \nID: %v", row.Name, row.ID)
+	}
+	fmt.Printf("\n")
+
+	// Use Tangy to search for RPM environments, by name, that are associated to a specific repository version, returning up to the first 100 results
+	var pkgEnvs []tangy.RpmEnvironmentSearch
+	pkgEnvs, err = t.RpmRepositoryVersionEnvironmentSearch(context.Background(), []string{versionHref}, "avi", 100)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Printf("\nEnvironments\n==================\n")
+	for _, row := range pkgEnvs {
+		fmt.Printf("\nName: %v \nID: %v", row.Name, row.ID)
 	}
 	fmt.Printf("\n")
 }
@@ -59,7 +88,7 @@ func CreateRepositoryVersion() (versionHref string, err error) {
 		DownloadPolicy: "on_demand",
 	})
 
-	domainName := "example-domain"
+	domainName := "example-domain-12231231"
 
 	// Create domain and repository, then sync repository, to create a new repository version with rpm packages
 	_, err = rpmZest.LookupOrCreateDomain(domainName)
@@ -67,7 +96,7 @@ func CreateRepositoryVersion() (versionHref string, err error) {
 		return "", err
 	}
 
-	repoHref, remoteHref, err := rpmZest.CreateRepository(domainName, "rpm modular", "https://fixtures.pulpproject.org/rpm-modular/")
+	repoHref, remoteHref, err := rpmZest.CreateRepository(domainName, "zoo", "https://rverdile.fedorapeople.org/dummy-repos/comps/repo2/")
 	if err != nil {
 		return "", err
 	}
@@ -82,7 +111,7 @@ func CreateRepositoryVersion() (versionHref string, err error) {
 		return "", err
 	}
 
-	resp, err := rpmZest.GetRpmRepositoryByName(domainName, "rpm modular")
+	resp, err := rpmZest.GetRpmRepositoryByName(domainName, "zoo")
 	if err != nil {
 		return "", err
 	}

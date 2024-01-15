@@ -28,7 +28,21 @@ defer t.Close()
 
 // Use Tangy to search for RPMs, by name, that are associated to a specific repository version, returning up to the first 100 results
 versionHref := "/pulp/e1c6bee3/api/v3/repositories/rpm/rpm/018c1c95-4281-76eb-b277-842cbad524f4/versions/1/"
-rows, err := t.RpmRepositoryVersionPackageSearch(context.Background(), []string{versionHref}, "ninja", 100)
+rows, err := t.RpmRepositoryVersionPackageSearch(context.Background(), []string{versionHref}, "bear", 100)
+if err != nil {
+return err
+}
+
+// Use Tangy to search for RPM Package Groups, by name, that are associated to a specific repository version, returning up to the first 100 results
+versionHref := "/pulp/e1c6bee3/api/v3/repositories/rpm/rpm/018c1c95-4281-76eb-b277-842cbad524f4/versions/1/"
+rows, err := t.RpmRepositoryVersionPackageGroupSearch(context.Background(), []string{versionHref}, "mammals", 100)
+if err != nil {
+return err
+}
+
+// Use Tangy to search for RPM Environments, by name, that are associated to a specific repository version, returning up to the first 100 results
+versionHref := "/pulp/e1c6bee3/api/v3/repositories/rpm/rpm/018c1c95-4281-76eb-b277-842cbad524f4/versions/1/"
+rows, err := t.RpmRepositoryVersionPackageGroupSearch(context.Background(), []string{versionHref}, "animals", 100)
 if err != nil {
 return err
 }

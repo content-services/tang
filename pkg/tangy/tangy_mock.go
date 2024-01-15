@@ -18,6 +18,58 @@ func (_m *MockTangy) Close() {
 	_m.Called()
 }
 
+// RpmRepositoryVersionEnvironmentSearch provides a mock function with given fields: ctx, hrefs, search, limit
+func (_m *MockTangy) RpmRepositoryVersionEnvironmentSearch(ctx context.Context, hrefs []string, search string, limit int) ([]RpmEnvironmentSearch, error) {
+	ret := _m.Called(ctx, hrefs, search, limit)
+
+	var r0 []RpmEnvironmentSearch
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []string, string, int) ([]RpmEnvironmentSearch, error)); ok {
+		return rf(ctx, hrefs, search, limit)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []string, string, int) []RpmEnvironmentSearch); ok {
+		r0 = rf(ctx, hrefs, search, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]RpmEnvironmentSearch)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []string, string, int) error); ok {
+		r1 = rf(ctx, hrefs, search, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RpmRepositoryVersionPackageGroupSearch provides a mock function with given fields: ctx, hrefs, search, limit
+func (_m *MockTangy) RpmRepositoryVersionPackageGroupSearch(ctx context.Context, hrefs []string, search string, limit int) ([]RpmPackageGroupSearch, error) {
+	ret := _m.Called(ctx, hrefs, search, limit)
+
+	var r0 []RpmPackageGroupSearch
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []string, string, int) ([]RpmPackageGroupSearch, error)); ok {
+		return rf(ctx, hrefs, search, limit)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []string, string, int) []RpmPackageGroupSearch); ok {
+		r0 = rf(ctx, hrefs, search, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]RpmPackageGroupSearch)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []string, string, int) error); ok {
+		r1 = rf(ctx, hrefs, search, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // RpmRepositoryVersionPackageSearch provides a mock function with given fields: ctx, hrefs, search, limit
 func (_m *MockTangy) RpmRepositoryVersionPackageSearch(ctx context.Context, hrefs []string, search string, limit int) ([]RpmPackageSearch, error) {
 	ret := _m.Called(ctx, hrefs, search, limit)
