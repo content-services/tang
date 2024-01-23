@@ -1,5 +1,5 @@
-github.com/content-services/zest/release/v2023 v2023.11.1701177874 h1:yC5uRkU78UtVe3oTn0pRwT9KBd9b4SBAfQ9QTargCqg=
-github.com/content-services/zest/release/v2023 v2023.11.1701177874/go.mod h1:9pesd98rUBOqg1z2UL65NA1+zZQRcFJY3VIdimAJxL8=
+github.com/content-services/zest/release/v2024 v2024.1.1706018763 h1:TrFMpNk1SaTgxmdh7PggnEGmAZZoKS7oOhqSeNlkxf0=
+github.com/content-services/zest/release/v2024 v2024.1.1706018763/go.mod h1:UwNlzoIpFWKjR3yPnm+l4GtShPYLhWy9Rt+jmFM5W/U=
 github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

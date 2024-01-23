@@ -212,14 +212,14 @@ func buildSearchQuery(queryFragment string, search string, limit int, repository
 }
 
 func parseRepositoryVersionHrefs(hrefs []string) (repositoryIDs []string, versions []int, err error) {
-	// /pulp/e1c6bee3/api/v3/repositories/rpm/rpm/018c1c95-4281-76eb-b277-842cbad524f4/versions/1/
+	// /api/pulp/e1c6bee3/api/v3/repositories/rpm/rpm/018c1c95-4281-76eb-b277-842cbad524f4/versions/1/
 	for _, href := range hrefs {
 		splitHref := strings.Split(href, "/")
 		if len(splitHref) < 10 {
 			return nil, nil, fmt.Errorf("%v is not a valid href", splitHref)
 		}
-		id := splitHref[8]
-		num := splitHref[10]
+		id := splitHref[9]
+		num := splitHref[11]
 
 		_, err = uuid.Parse(id)
 		if err != nil {
