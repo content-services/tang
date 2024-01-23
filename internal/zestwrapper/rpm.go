@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/content-services/tang/internal/config"
-	zest "github.com/content-services/zest/release/v2023"
+	zest "github.com/content-services/zest/release/v2024"
 	"golang.org/x/exp/slices"
 )
 
