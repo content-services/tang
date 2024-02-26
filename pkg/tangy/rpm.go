@@ -37,6 +37,25 @@ type RpmEnvironmentSearch struct {
 	Description string
 }
 
+type RpmListItem struct {
+	Id      string
+	Name    string // The rpm package name
+	Arch    string // The Architecture of the rpm
+	Version string // The version of the  rpm
+	Release string // The release of the rpm
+	Epoch   string // The epoch of the rpm
+	Summary string // The summary of the rpm
+}
+
+type PageOptions struct {
+	Offset int32
+	Limit  int32
+}
+
+type RpmListFilters struct {
+	Name string
+}
+
 // RpmRepositoryVersionPackageSearch search for RPMs, by name, associated to repository hrefs, returning an amount up to limit
 func (t *tangyImpl) RpmRepositoryVersionPackageSearch(ctx context.Context, hrefs []string, search string, limit int) ([]RpmPackageSearch, error) {
 	if len(hrefs) == 0 {
@@ -209,6 +228,62 @@ func buildSearchQuery(queryFragment string, search string, limit int, repository
 		query += "UNION"
 	}
 	return query
+}
+
+// RpmRepositoryVersionPackageSearch search for RPMs, by name, associated to repository hrefs, returning an amount up to limit
+func (t *tangyImpl) RpmRepositoryVersionPackageList(ctx context.Context, hrefs []string, filterOpts RpmListFilters, pageOpts PageOptions) ([]RpmListItem, error) {
+	if len(hrefs) == 0 {
+		return []RpmListItem{}, nil
+	}
+
+	conn, err := t.pool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	if pageOpts.Limit == 0 {
+		pageOpts.Limit = DefaultLimit
+	}
+
+	repositoryIDs, versions, err := parseRepositoryVersionHrefs(hrefs)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing repository version hrefs: %w", err)
+	}
+
+	query := `SELECT rp.content_ptr_id as id, rp.name, rp.version, rp.arch, rp.release, rp.epoch, rp.summary
+              FROM rpm_package rp WHERE rp.content_ptr_id IN (`
+	for i := 0; i < len(repositoryIDs); i++ {
+		id := repositoryIDs[i]
+		ver := versions[i]
+
+		query += fmt.Sprintf(`
+			(
+                SELECT crc.content_id
+                FROM core_repositorycontent crc
+                INNER JOIN core_repositoryversion crv ON (crc.version_added_id = crv.pulp_id)
+                LEFT OUTER JOIN core_repositoryversion crv2 ON (crc.version_removed_id = crv2.pulp_id)
+                WHERE crv.repository_id = '%v' AND crv.number <= %v AND NOT (crv2.number <= %v AND crv2.number IS NOT NULL)
+				AND rp.name ILIKE CONCAT( '%%', '%v'::text, '%%')
+            )
+		`, id, ver, ver, filterOpts.Name)
+
+		if i == len(repositoryIDs)-1 {
+			query += fmt.Sprintf(") ORDER BY rp.name ASC, rp.version ASC, rp.release ASC, rp.arch ASC LIMIT %v OFFSET %v;", pageOpts.Limit, pageOpts.Offset)
+			break
+		}
+
+		query += "UNION"
+	}
+	rows, err := conn.Query(context.Background(), query)
+	if err != nil {
+		return nil, err
+	}
+	rpms, err := pgx.CollectRows(rows, pgx.RowToStructByName[RpmListItem])
+	if err != nil {
+		return nil, err
+	}
+	return rpms, nil
 }
 
 func parseRepositoryVersionHrefs(hrefs []string) (repositoryIDs []string, versions []int, err error) {
