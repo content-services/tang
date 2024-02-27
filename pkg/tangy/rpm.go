@@ -48,8 +48,8 @@ type RpmListItem struct {
 }
 
 type PageOptions struct {
-	Offset int32
-	Limit  int32
+	Offset int
+	Limit  int
 }
 
 type RpmListFilters struct {
@@ -230,15 +230,25 @@ func buildSearchQuery(queryFragment string, search string, limit int, repository
 	return query
 }
 
+type Total struct {
+	Total int
+}
+
 // RpmRepositoryVersionPackageSearch search for RPMs, by name, associated to repository hrefs, returning an amount up to limit
-func (t *tangyImpl) RpmRepositoryVersionPackageList(ctx context.Context, hrefs []string, filterOpts RpmListFilters, pageOpts PageOptions) ([]RpmListItem, error) {
+func (t *tangyImpl) RpmRepositoryVersionPackageList(ctx context.Context, hrefs []string, filterOpts RpmListFilters, pageOpts PageOptions) ([]RpmListItem, int, error) {
+	var (
+		innerUnion     string
+		queryOpen      string
+		countQueryOpen string
+	)
+
 	if len(hrefs) == 0 {
-		return []RpmListItem{}, nil
+		return []RpmListItem{}, 0, nil
 	}
 
 	conn, err := t.pool.Acquire(ctx)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer conn.Release()
 
@@ -246,44 +256,34 @@ func (t *tangyImpl) RpmRepositoryVersionPackageList(ctx context.Context, hrefs [
 		pageOpts.Limit = DefaultLimit
 	}
 
-	repositoryIDs, versions, err := parseRepositoryVersionHrefs(hrefs)
+	repoVerMap, err := parseRepositoryVersionHrefsMap(hrefs)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing repository version hrefs: %w", err)
+		return nil, 0, fmt.Errorf("error parsing repository version hrefs: %w", err)
 	}
 
-	query := `SELECT rp.content_ptr_id as id, rp.name, rp.version, rp.arch, rp.release, rp.epoch, rp.summary
-              FROM rpm_package rp WHERE rp.content_ptr_id IN (`
-	for i := 0; i < len(repositoryIDs); i++ {
-		id := repositoryIDs[i]
-		ver := versions[i]
+	countQueryOpen = "select count(*) as total FROM rpm_package rp WHERE rp.content_ptr_id IN "
+	innerUnion = contentIdsInVersions(repoVerMap)
 
-		query += fmt.Sprintf(`
-			(
-                SELECT crc.content_id
-                FROM core_repositorycontent crc
-                INNER JOIN core_repositoryversion crv ON (crc.version_added_id = crv.pulp_id)
-                LEFT OUTER JOIN core_repositoryversion crv2 ON (crc.version_removed_id = crv2.pulp_id)
-                WHERE crv.repository_id = '%v' AND crv.number <= %v AND NOT (crv2.number <= %v AND crv2.number IS NOT NULL)
-				AND rp.name ILIKE CONCAT( '%%', '%v'::text, '%%')
-            )
-		`, id, ver, ver, filterOpts.Name)
-
-		if i == len(repositoryIDs)-1 {
-			query += fmt.Sprintf(") ORDER BY rp.name ASC, rp.version ASC, rp.release ASC, rp.arch ASC LIMIT %v OFFSET %v;", pageOpts.Limit, pageOpts.Offset)
-			break
-		}
-
-		query += "UNION"
-	}
-	rows, err := conn.Query(context.Background(), query)
+	var countTotal int
+	err = conn.QueryRow(ctx, countQueryOpen+innerUnion+" AND rp.name ILIKE CONCAT( '%', @nameFilter::text, '%')", pgx.NamedArgs{"nameFilter": "%" + filterOpts.Name + "%"}).Scan(&countTotal)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
+	}
+
+	queryOpen = `SELECT rp.content_ptr_id as id, rp.name, rp.version, rp.arch, rp.release, rp.epoch, rp.summary
+              FROM rpm_package rp WHERE rp.content_ptr_id IN `
+
+	rows, err := conn.Query(ctx, queryOpen+innerUnion+
+		" AND rp.name ILIKE CONCAT( '%', @nameFilter::text, '%') ORDER BY rp.name ASC, rp.version ASC, rp.release ASC, rp.arch ASC LIMIT @limit OFFSET @offset",
+		pgx.NamedArgs{"nameFilter": filterOpts.Name, "limit": pageOpts.Limit, "offset": pageOpts.Offset})
+	if err != nil {
+		return nil, 0, err
 	}
 	rpms, err := pgx.CollectRows(rows, pgx.RowToStructByName[RpmListItem])
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return rpms, nil
+	return rpms, countTotal, nil
 }
 
 func parseRepositoryVersionHrefs(hrefs []string) (repositoryIDs []string, versions []int, err error) {
@@ -310,6 +310,32 @@ func parseRepositoryVersionHrefs(hrefs []string) (repositoryIDs []string, versio
 		versions = append(versions, ver)
 	}
 	return
+}
+
+func parseRepositoryVersionHrefsMap(hrefs []string) (mapping map[string]int, err error) {
+	mapping = make(map[string]int)
+	// /api/pulp/e1c6bee3/api/v3/repositories/rpm/rpm/018c1c95-4281-76eb-b277-842cbad524f4/versions/1/
+	for _, href := range hrefs {
+		splitHref := strings.Split(href, "/")
+		if len(splitHref) < 10 {
+			return mapping, fmt.Errorf("%v is not a valid href", splitHref)
+		}
+		id := splitHref[9]
+		num := splitHref[11]
+
+		_, err = uuid.Parse(id)
+		if err != nil {
+			return mapping, fmt.Errorf("%v is not a valid uuid", id)
+		}
+
+		ver, err := strconv.Atoi(num)
+		if err != nil {
+			return mapping, fmt.Errorf("%v is not a valid integer", num)
+		}
+
+		mapping[id] = ver
+	}
+	return mapping, nil
 }
 
 func parsePackages(pulpPackageList []map[string]any) ([]string, error) {

@@ -250,42 +250,45 @@ func (r *RpmSuite) TestRpmRepositoryVersionPackageListNameFilter() {
 	firstVersionHref := resp.LatestVersionHref
 	require.NotNil(r.T(), firstVersionHref)
 
-	// exact match
-	singleList, err := r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{*firstVersionHref}, tangy.RpmListFilters{Name: "bear"}, tangy.PageOptions{})
+	// no filter
+	singleList, total, err := r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{*firstVersionHref}, tangy.RpmListFilters{Name: ""}, tangy.PageOptions{})
 	require.NoError(r.T(), err)
 	assert.NotEmpty(r.T(), singleList)
+	assert.Equal(r.T(), total, 4)
+
+	// exact match
+	singleList, total, err = r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{*firstVersionHref}, tangy.RpmListFilters{Name: "bear"}, tangy.PageOptions{})
+	require.NoError(r.T(), err)
+	assert.NotEmpty(r.T(), singleList)
+	assert.Equal(r.T(), total, 1)
 
 	// partial match
-	singleList, err = r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{*firstVersionHref}, tangy.RpmListFilters{Name: "bea"}, tangy.PageOptions{})
+	singleList, total, err = r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{*firstVersionHref}, tangy.RpmListFilters{Name: "bea"}, tangy.PageOptions{})
 	require.NoError(r.T(), err)
 	assert.NotEmpty(r.T(), singleList)
+	assert.Equal(r.T(), total, 1)
 
 	// no match
-	singleList, err = r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{*firstVersionHref}, tangy.RpmListFilters{Name: "wal"}, tangy.PageOptions{})
+	singleList, total, err = r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{*firstVersionHref}, tangy.RpmListFilters{Name: "wal"}, tangy.PageOptions{})
 	require.NoError(r.T(), err)
 	assert.Empty(r.T(), singleList)
+	assert.Equal(r.T(), total, 0)
 }
 
 // RpmRepositoryVersionPackageList
 func (r *RpmSuite) TestRpmRepositoryVersionPackageListNoDuplicates() {
 	firstVersionHref := r.firstVersionHref
+	secondVersionHref := r.secondVersionHref
 
-	otherRepoName := "Same Repo url "
-	r.CreateTestRepository(r.T(), otherRepoName)
-	resp, err := r.client.GetRpmRepositoryByName(r.domainName, otherRepoName)
-	require.NoError(r.T(), err)
-	secondVersionHref := resp.LatestVersionHref
-	require.NotNil(r.T(), firstVersionHref)
-
-	doubleList, err := r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{firstVersionHref, *secondVersionHref}, tangy.RpmListFilters{}, tangy.PageOptions{})
+	doubleList, total, err := r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{firstVersionHref, secondVersionHref}, tangy.RpmListFilters{}, tangy.PageOptions{})
 	require.NoError(r.T(), err)
 	assert.NotEmpty(r.T(), doubleList)
+	assert.Equal(r.T(), total, 4)
 
-	singleList, err := r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{firstVersionHref}, tangy.RpmListFilters{}, tangy.PageOptions{})
+	singleList, total, err := r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{firstVersionHref}, tangy.RpmListFilters{}, tangy.PageOptions{})
 	require.NoError(r.T(), err)
 	assert.NotEmpty(r.T(), singleList)
-
-	assert.Equal(r.T(), singleList, doubleList)
+	assert.Equal(r.T(), total, 3)
 }
 
 func RandStringBytes(n int) string {
