@@ -236,12 +236,6 @@ type Total struct {
 
 // RpmRepositoryVersionPackageSearch search for RPMs, by name, associated to repository hrefs, returning an amount up to limit
 func (t *tangyImpl) RpmRepositoryVersionPackageList(ctx context.Context, hrefs []string, filterOpts RpmListFilters, pageOpts PageOptions) ([]RpmListItem, int, error) {
-	var (
-		innerUnion     string
-		queryOpen      string
-		countQueryOpen string
-	)
-
 	if len(hrefs) == 0 {
 		return []RpmListItem{}, 0, nil
 	}
@@ -261,21 +255,24 @@ func (t *tangyImpl) RpmRepositoryVersionPackageList(ctx context.Context, hrefs [
 		return nil, 0, fmt.Errorf("error parsing repository version hrefs: %w", err)
 	}
 
-	countQueryOpen = "select count(*) as total FROM rpm_package rp WHERE rp.content_ptr_id IN "
-	innerUnion = contentIdsInVersions(repoVerMap)
+	countQueryOpen := "select count(*) as total FROM rpm_package rp WHERE rp.content_ptr_id IN "
+	args := pgx.NamedArgs{"nameFilter": "%" + filterOpts.Name + "%"}
+	innerUnion := contentIdsInVersions(repoVerMap, &args)
 
 	var countTotal int
-	err = conn.QueryRow(ctx, countQueryOpen+innerUnion+" AND rp.name ILIKE CONCAT( '%', @nameFilter::text, '%')", pgx.NamedArgs{"nameFilter": "%" + filterOpts.Name + "%"}).Scan(&countTotal)
+	err = conn.QueryRow(ctx, countQueryOpen+innerUnion+" AND rp.name ILIKE CONCAT( '%', @nameFilter::text, '%')", args).Scan(&countTotal)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	queryOpen = `SELECT rp.content_ptr_id as id, rp.name, rp.version, rp.arch, rp.release, rp.epoch, rp.summary
+	queryOpen := `SELECT rp.content_ptr_id as id, rp.name, rp.version, rp.arch, rp.release, rp.epoch, rp.summary
               FROM rpm_package rp WHERE rp.content_ptr_id IN `
 
+	args["limit"] = pageOpts.Limit
+	args["offset"] = pageOpts.Offset
 	rows, err := conn.Query(ctx, queryOpen+innerUnion+
 		" AND rp.name ILIKE CONCAT( '%', @nameFilter::text, '%') ORDER BY rp.name ASC, rp.version ASC, rp.release ASC, rp.arch ASC LIMIT @limit OFFSET @offset",
-		pgx.NamedArgs{"nameFilter": filterOpts.Name, "limit": pageOpts.Limit, "offset": pageOpts.Offset})
+		args)
 	if err != nil {
 		return nil, 0, err
 	}
