@@ -283,7 +283,7 @@ func (r *RpmSuite) TestRpmRepositoryVersionPackageListNoDuplicates() {
 	doubleList, total, err := r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{firstVersionHref, secondVersionHref}, tangy.RpmListFilters{}, tangy.PageOptions{})
 	require.NoError(r.T(), err)
 	assert.NotEmpty(r.T(), doubleList)
-	assert.Equal(r.T(), total, 4)
+	assert.Equal(r.T(), total, 5)
 
 	singleList, total, err := r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{firstVersionHref}, tangy.RpmListFilters{}, tangy.PageOptions{})
 	require.NoError(r.T(), err)

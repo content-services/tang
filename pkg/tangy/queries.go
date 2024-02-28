@@ -24,11 +24,10 @@ func contentIdsInVersion(repoId string, versionNum int, namedArgs *pgx.NamedArgs
 	return fmt.Sprintf(query, repoIdName, versionNumName, versionNumName)
 }
 
-func contentIdsInVersions(repoVerMap map[string]int, namedArgs *pgx.NamedArgs) string {
+func contentIdsInVersions(repoVerMap []ParsedRepoVersion, namedArgs *pgx.NamedArgs) string {
 	queries := []string{}
-	for repo, ver := range repoVerMap {
-		queries = append(queries, contentIdsInVersion(repo, ver, namedArgs))
+	for _, parsed := range repoVerMap {
+		queries = append(queries, contentIdsInVersion(parsed.RepositoryUUID, parsed.Version, namedArgs))
 	}
 	return fmt.Sprintf("( %v ) ", strings.Join(queries, " UNION "))
-
 }
