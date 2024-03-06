@@ -291,6 +291,29 @@ func (r *RpmSuite) TestRpmRepositoryVersionPackageListNoDuplicates() {
 	assert.Equal(r.T(), total, 3)
 }
 
+func (r *RpmSuite) TestRpmRepositoryVersionPackageListOffsetLimit() {
+	firstVersionHref := r.firstVersionHref
+	secondVersionHref := r.secondVersionHref
+
+	list, total, err := r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{firstVersionHref, secondVersionHref}, tangy.RpmListFilters{}, tangy.PageOptions{Offset: 1, Limit: 4})
+	require.NoError(r.T(), err)
+	assert.NotEmpty(r.T(), list)
+	assert.Equal(r.T(), 4, len(list))
+	assert.Equal(r.T(), 5, total)
+
+	list, total, err = r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{firstVersionHref, secondVersionHref}, tangy.RpmListFilters{}, tangy.PageOptions{Offset: 4, Limit: 1})
+	require.NoError(r.T(), err)
+	assert.NotEmpty(r.T(), list)
+	assert.Equal(r.T(), 1, len(list))
+	assert.Equal(r.T(), 5, total)
+
+	list, total, err = r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{firstVersionHref, secondVersionHref}, tangy.RpmListFilters{}, tangy.PageOptions{Offset: 100, Limit: 100})
+	require.NoError(r.T(), err)
+	assert.Empty(r.T(), list)
+	assert.Equal(r.T(), 0, len(list))
+	assert.Equal(r.T(), 5, total)
+}
+
 func RandStringBytes(n int) string {
 	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	b := make([]byte, n)
