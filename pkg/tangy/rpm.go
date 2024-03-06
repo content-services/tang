@@ -37,6 +37,25 @@ type RpmEnvironmentSearch struct {
 	Description string
 }
 
+type RpmListItem struct {
+	Id      string
+	Name    string // The rpm package name
+	Arch    string // The Architecture of the rpm
+	Version string // The version of the  rpm
+	Release string // The release of the rpm
+	Epoch   string // The epoch of the rpm
+	Summary string // The summary of the rpm
+}
+
+type PageOptions struct {
+	Offset int
+	Limit  int
+}
+
+type RpmListFilters struct {
+	Name string
+}
+
 // RpmRepositoryVersionPackageSearch search for RPMs, by name, associated to repository hrefs, returning an amount up to limit
 func (t *tangyImpl) RpmRepositoryVersionPackageSearch(ctx context.Context, hrefs []string, search string, limit int) ([]RpmPackageSearch, error) {
 	if len(hrefs) == 0 {
@@ -53,17 +72,18 @@ func (t *tangyImpl) RpmRepositoryVersionPackageSearch(ctx context.Context, hrefs
 		limit = DefaultLimit
 	}
 
-	repositoryIDs, versions, err := parseRepositoryVersionHrefs(hrefs)
+	repoVerMap, err := parseRepositoryVersionHrefsMap(hrefs)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing repository version hrefs: %w", err)
+		return []RpmPackageSearch{}, fmt.Errorf("error parsing repository version hrefs: %w", err)
 	}
 
+	args := pgx.NamedArgs{"nameFilter": "%" + search + "%", "limit": limit}
+	innerUnion := contentIdsInVersions(repoVerMap, &args)
+
 	query := `SELECT DISTINCT ON (rp.name) rp.name, rp.summary
-              FROM rpm_package rp WHERE rp.content_ptr_id IN (`
+              FROM rpm_package rp WHERE rp.content_ptr_id IN `
 
-	query = buildSearchQuery(query, search, limit, repositoryIDs, versions)
-
-	rows, err := conn.Query(context.Background(), query)
+	rows, err := conn.Query(context.Background(), query+innerUnion+" AND rp.name ILIKE CONCAT( '%', @nameFilter::text, '%') ORDER BY rp.name  LIMIT @limit", args)
 	if err != nil {
 		return nil, err
 	}
@@ -91,17 +111,19 @@ func (t *tangyImpl) RpmRepositoryVersionPackageGroupSearch(ctx context.Context, 
 		limit = DefaultLimit
 	}
 
-	repositoryIDs, versions, err := parseRepositoryVersionHrefs(hrefs)
+	repoVerMap, err := parseRepositoryVersionHrefsMap(hrefs)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing repository version hrefs: %w", err)
+		return []RpmPackageGroupSearch{}, fmt.Errorf("error parsing repository version hrefs: %w", err)
 	}
 
-	query := `SELECT DISTINCT ON (rp.name, rp.id, rp.packages) rp.name, rp.id, rp.description, rp.packages
-              FROM rpm_packagegroup rp WHERE rp.content_ptr_id IN (
-			`
-	query = buildSearchQuery(query, search, limit, repositoryIDs, versions)
+	args := pgx.NamedArgs{"nameFilter": "%" + search + "%"}
+	innerUnion := contentIdsInVersions(repoVerMap, &args)
 
-	rows, err := conn.Query(context.Background(), query)
+	query := `SELECT DISTINCT ON (rp.name, rp.id, rp.packages) rp.name, rp.id, rp.description, rp.packages
+              FROM rpm_packagegroup rp WHERE rp.content_ptr_id IN 
+			`
+
+	rows, err := conn.Query(ctx, query+innerUnion+"AND rp.name ILIKE CONCAT( '%', @nameFilter::text, '%') ORDER BY rp.name", args)
 	if err != nil {
 		return nil, err
 	}
@@ -138,11 +160,20 @@ func (t *tangyImpl) RpmRepositoryVersionPackageGroupSearch(ctx context.Context, 
 	}
 
 	var searchResult []RpmPackageGroupSearch
-	for _, pkgGroup := range pkgGroupMap {
-		searchResult = append(searchResult, pkgGroup)
+	for _, rpm := range rpms {
+		nameId := rpm.Name + rpm.ID
+		val, ok := pkgGroupMap[nameId]
+		if ok {
+			searchResult = append(searchResult, val)
+		}
+		delete(pkgGroupMap, nameId) // delete it so we don't add it again
 	}
 
-	return searchResult, nil
+	if len(searchResult) <= limit {
+		return searchResult, nil
+	} else {
+		return searchResult[0:limit], nil
+	}
 }
 
 // RpmRepositoryVersionEnvironmentSearch search for RPM Environments, by name, associated to repository hrefs, returning an amount up to limit
@@ -161,17 +192,19 @@ func (t *tangyImpl) RpmRepositoryVersionEnvironmentSearch(ctx context.Context, h
 		limit = DefaultLimit
 	}
 
-	repositoryIDs, versions, err := parseRepositoryVersionHrefs(hrefs)
+	repoVerMap, err := parseRepositoryVersionHrefsMap(hrefs)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing repository version hrefs: %w", err)
+		return []RpmEnvironmentSearch{}, fmt.Errorf("error parsing repository version hrefs: %w", err)
 	}
 
-	query := `SELECT DISTINCT ON (rp.name, rp.id) rp.name, rp.id, rp.description
-              FROM rpm_packageenvironment rp WHERE rp.content_ptr_id IN (
-			`
-	query = buildSearchQuery(query, search, limit, repositoryIDs, versions)
+	args := pgx.NamedArgs{"nameFilter": "%" + search + "%", "limit": limit}
+	innerUnion := contentIdsInVersions(repoVerMap, &args)
 
-	rows, err := conn.Query(context.Background(), query)
+	query := `SELECT DISTINCT ON (rp.name, rp.id) rp.name, rp.id, rp.description
+              FROM rpm_packageenvironment rp WHERE rp.content_ptr_id IN 
+			`
+
+	rows, err := conn.Query(ctx, query+innerUnion+" AND rp.name ILIKE CONCAT( '%', @nameFilter::text, '%') ORDER BY rp.name  LIMIT @limit", args)
 	if err != nil {
 		return nil, err
 	}
@@ -183,58 +216,87 @@ func (t *tangyImpl) RpmRepositoryVersionEnvironmentSearch(ctx context.Context, h
 	return rpms, nil
 }
 
-// buildSearchQuery builds search query for rpm package, package group, and environment search by name
-func buildSearchQuery(queryFragment string, search string, limit int, repositoryIDs []string, versions []int) string {
-	query := queryFragment
-	for i := 0; i < len(repositoryIDs); i++ {
-		id := repositoryIDs[i]
-		ver := versions[i]
-
-		query += fmt.Sprintf(`
-			(
-    		    SELECT crc.content_id
-    		    FROM core_repositorycontent crc
-    		    INNER JOIN core_repositoryversion crv ON (crc.version_added_id = crv.pulp_id)
-    		    LEFT OUTER JOIN core_repositoryversion crv2 ON (crc.version_removed_id = crv2.pulp_id)
-    		    WHERE crv.repository_id = '%v' AND crv.number <= %v AND NOT (crv2.number <= %v AND crv2.number IS NOT NULL)
-				AND rp.name ILIKE CONCAT( '%%', '%v'::text, '%%')
-            )
-		`, id, ver, ver, search)
-
-		if i == len(repositoryIDs)-1 {
-			query += fmt.Sprintf(") ORDER BY rp.name ASC LIMIT %v;", limit)
-			break
-		}
-
-		query += "UNION"
+// RpmRepositoryVersionPackageList List RPMs within a repository version, with pagination, and an optional name filter
+func (t *tangyImpl) RpmRepositoryVersionPackageList(ctx context.Context, hrefs []string, filterOpts RpmListFilters, pageOpts PageOptions) ([]RpmListItem, int, error) {
+	if len(hrefs) == 0 {
+		return []RpmListItem{}, 0, nil
 	}
-	return query
+
+	conn, err := t.pool.Acquire(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer conn.Release()
+
+	if pageOpts.Limit == 0 {
+		pageOpts.Limit = DefaultLimit
+	}
+
+	repoVerMap, err := parseRepositoryVersionHrefsMap(hrefs)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error parsing repository version hrefs: %w", err)
+	}
+
+	countQueryOpen := "select count(*) as total FROM rpm_package rp WHERE rp.content_ptr_id IN "
+	args := pgx.NamedArgs{"nameFilter": "%" + filterOpts.Name + "%"}
+	innerUnion := contentIdsInVersions(repoVerMap, &args)
+
+	var countTotal int
+	err = conn.QueryRow(ctx, countQueryOpen+innerUnion+" AND rp.name ILIKE CONCAT( '%', @nameFilter::text, '%')", args).Scan(&countTotal)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	queryOpen := `SELECT rp.content_ptr_id as id, rp.name, rp.version, rp.arch, rp.release, rp.epoch, rp.summary
+              FROM rpm_package rp WHERE rp.content_ptr_id IN `
+
+	args["limit"] = pageOpts.Limit
+	args["offset"] = pageOpts.Offset
+	rows, err := conn.Query(ctx, queryOpen+innerUnion+
+		" AND rp.name ILIKE CONCAT( '%', @nameFilter::text, '%') ORDER BY rp.name ASC, rp.version ASC, rp.release ASC, rp.arch ASC LIMIT @limit OFFSET @offset",
+		args)
+	if err != nil {
+		return nil, 0, err
+	}
+	rpms, err := pgx.CollectRows(rows, pgx.RowToStructByName[RpmListItem])
+	if err != nil {
+		return nil, 0, err
+	}
+	return rpms, countTotal, nil
 }
 
-func parseRepositoryVersionHrefs(hrefs []string) (repositoryIDs []string, versions []int, err error) {
+type ParsedRepoVersion struct {
+	RepositoryUUID string
+	Version        int
+}
+
+func parseRepositoryVersionHrefsMap(hrefs []string) (mapping []ParsedRepoVersion, err error) {
+	mapping = []ParsedRepoVersion{}
 	// /api/pulp/e1c6bee3/api/v3/repositories/rpm/rpm/018c1c95-4281-76eb-b277-842cbad524f4/versions/1/
 	for _, href := range hrefs {
 		splitHref := strings.Split(href, "/")
 		if len(splitHref) < 10 {
-			return nil, nil, fmt.Errorf("%v is not a valid href", splitHref)
+			return mapping, fmt.Errorf("%v is not a valid href", splitHref)
 		}
 		id := splitHref[9]
 		num := splitHref[11]
 
 		_, err = uuid.Parse(id)
 		if err != nil {
-			return nil, nil, fmt.Errorf("%v is not a valid uuid", id)
+			return mapping, fmt.Errorf("%v is not a valid uuid", id)
 		}
 
 		ver, err := strconv.Atoi(num)
 		if err != nil {
-			return nil, nil, fmt.Errorf("%v is not a valid integer", num)
+			return mapping, fmt.Errorf("%v is not a valid integer", num)
 		}
 
-		repositoryIDs = append(repositoryIDs, id)
-		versions = append(versions, ver)
+		mapping = append(mapping, ParsedRepoVersion{
+			RepositoryUUID: id,
+			Version:        ver,
+		})
 	}
-	return
+	return mapping, nil
 }
 
 func parsePackages(pulpPackageList []map[string]any) ([]string, error) {

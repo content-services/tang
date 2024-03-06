@@ -30,14 +30,11 @@ const testRepoName = "zoo"
 const testRepoURL = "https://rverdile.fedorapeople.org/dummy-repos/comps/repo1/"
 const testRepoURLTwo = "https://rverdile.fedorapeople.org/dummy-repos/comps/repo2/"
 
-func (r *RpmSuite) CreateTestRepository(t *testing.T) {
-	domainName := RandStringBytes(10)
-	r.domainName = domainName
-
-	_, err := r.client.LookupOrCreateDomain(domainName)
+func (r *RpmSuite) CreateTestRepository(t *testing.T, repoName string) {
+	_, err := r.client.LookupOrCreateDomain(r.domainName)
 	require.NoError(t, err)
 
-	repoHref, remoteHref, err := r.client.CreateRepository(domainName, testRepoName, testRepoURL)
+	repoHref, remoteHref, err := r.client.CreateRepository(r.domainName, repoName, testRepoURL)
 	require.NoError(t, err)
 
 	r.repoHref = repoHref
@@ -78,7 +75,10 @@ func TestRpmSuite(t *testing.T) {
 	r := RpmSuite{}
 	r.client = &rpmZest
 	r.tangy = ta
-	r.CreateTestRepository(t)
+
+	r.domainName = RandStringBytes(10)
+
+	r.CreateTestRepository(t, testRepoName)
 
 	// Get first version href
 	resp, err := r.client.GetRpmRepositoryByName(r.domainName, testRepoName)
@@ -242,6 +242,76 @@ func (r *RpmSuite) TestRpmRepositoryVersionEnvironmentSearch() {
 	search, err = r.tangy.RpmRepositoryVersionEnvironmentSearch(context.Background(), []string{}, "a", 1)
 	assert.NoError(r.T(), err)
 	assert.Len(r.T(), search, 0)
+}
+
+func (r *RpmSuite) TestRpmRepositoryVersionPackageListNameFilter() {
+	resp, err := r.client.GetRpmRepositoryByName(r.domainName, testRepoName)
+	require.NoError(r.T(), err)
+	firstVersionHref := resp.LatestVersionHref
+	require.NotNil(r.T(), firstVersionHref)
+
+	// no filter
+	singleList, total, err := r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{*firstVersionHref}, tangy.RpmListFilters{Name: ""}, tangy.PageOptions{})
+	require.NoError(r.T(), err)
+	assert.NotEmpty(r.T(), singleList)
+	assert.Equal(r.T(), total, 4)
+
+	// exact match
+	singleList, total, err = r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{*firstVersionHref}, tangy.RpmListFilters{Name: "bear"}, tangy.PageOptions{})
+	require.NoError(r.T(), err)
+	assert.NotEmpty(r.T(), singleList)
+	assert.Equal(r.T(), total, 1)
+
+	// partial match
+	singleList, total, err = r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{*firstVersionHref}, tangy.RpmListFilters{Name: "bea"}, tangy.PageOptions{})
+	require.NoError(r.T(), err)
+	assert.NotEmpty(r.T(), singleList)
+	assert.Equal(r.T(), total, 1)
+
+	// no match
+	singleList, total, err = r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{*firstVersionHref}, tangy.RpmListFilters{Name: "wal"}, tangy.PageOptions{})
+	require.NoError(r.T(), err)
+	assert.Empty(r.T(), singleList)
+	assert.Equal(r.T(), total, 0)
+}
+
+// RpmRepositoryVersionPackageList
+func (r *RpmSuite) TestRpmRepositoryVersionPackageListNoDuplicates() {
+	firstVersionHref := r.firstVersionHref
+	secondVersionHref := r.secondVersionHref
+
+	doubleList, total, err := r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{firstVersionHref, secondVersionHref}, tangy.RpmListFilters{}, tangy.PageOptions{})
+	require.NoError(r.T(), err)
+	assert.NotEmpty(r.T(), doubleList)
+	assert.Equal(r.T(), total, 5)
+
+	singleList, total, err := r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{firstVersionHref}, tangy.RpmListFilters{}, tangy.PageOptions{})
+	require.NoError(r.T(), err)
+	assert.NotEmpty(r.T(), singleList)
+	assert.Equal(r.T(), total, 3)
+}
+
+func (r *RpmSuite) TestRpmRepositoryVersionPackageListOffsetLimit() {
+	firstVersionHref := r.firstVersionHref
+	secondVersionHref := r.secondVersionHref
+
+	list, total, err := r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{firstVersionHref, secondVersionHref}, tangy.RpmListFilters{}, tangy.PageOptions{Offset: 1, Limit: 4})
+	require.NoError(r.T(), err)
+	assert.NotEmpty(r.T(), list)
+	assert.Equal(r.T(), 4, len(list))
+	assert.Equal(r.T(), 5, total)
+
+	list, total, err = r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{firstVersionHref, secondVersionHref}, tangy.RpmListFilters{}, tangy.PageOptions{Offset: 4, Limit: 1})
+	require.NoError(r.T(), err)
+	assert.NotEmpty(r.T(), list)
+	assert.Equal(r.T(), 1, len(list))
+	assert.Equal(r.T(), 5, total)
+
+	list, total, err = r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{firstVersionHref, secondVersionHref}, tangy.RpmListFilters{}, tangy.PageOptions{Offset: 100, Limit: 100})
+	require.NoError(r.T(), err)
+	assert.Empty(r.T(), list)
+	assert.Equal(r.T(), 0, len(list))
+	assert.Equal(r.T(), 5, total)
 }
 
 func RandStringBytes(n int) string {
