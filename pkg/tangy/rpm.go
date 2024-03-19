@@ -1,7 +1,6 @@
 package tangy
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"strconv"
@@ -251,6 +250,7 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 	}
 
 	repoVerMap, err := parseRepositoryVersionHrefsMap(hrefs)
+
 	if err != nil {
 		return nil, 0, fmt.Errorf("error parsing repository version hrefs: %w", err)
 	}
@@ -263,17 +263,17 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 		"severityFilter": filterOpts.Severity,
 	}
 
-	var filterBytes bytes.Buffer
+	var concatFilter strings.Builder
 	if filterOpts.ID != "" {
-		filterBytes.WriteString(" AND re.id ILIKE CONCAT( '%', @idFilter::text, '%')")
+		concatFilter.WriteString(" AND re.id ILIKE CONCAT( '%', @idFilter::text, '%')")
 	}
 	if filterOpts.Type != "" {
-		filterBytes.WriteString(" AND re.type = @typeFilter::text")
+		concatFilter.WriteString(" AND re.type = @typeFilter::text")
 	}
 	if filterOpts.Severity != "" {
-		filterBytes.WriteString(" AND re.severity = @severityFilter::text")
+		concatFilter.WriteString(" AND re.severity = @severityFilter::text")
 	}
-	filterQuery := filterBytes.String()
+	filterQuery := concatFilter.String()
 
 	innerUnion := contentIdsInVersions(repoVerMap, &args)
 
@@ -285,7 +285,7 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 		return nil, 0, err
 	}
 
-	queryOpen := `SELECT re.content_ptr_id as id, re.id as errata_id, re.title, re.summary, re.description, re.issued_date, re.type, re.severity, re.reboot_suggested
+	queryOpen := `SELECT re.content_ptr_id as id, re.id as ErrataId, re.title, re.summary, re.description, re.issued_date as IssuedDate, re.type, re.severity, re.reboot_suggested as RebootSuggested
               FROM rpm_updaterecord re WHERE re.content_ptr_id IN `
 
 	args["limit"] = pageOpts.Limit
@@ -296,7 +296,9 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 	if err != nil {
 		return nil, 0, err
 	}
+
 	errata, err := pgx.CollectRows(rows, pgx.RowToStructByName[ErrataListItem])
+
 	if err != nil {
 		return nil, 0, err
 	}
