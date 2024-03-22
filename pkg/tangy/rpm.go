@@ -54,6 +54,7 @@ type ErrataListItem struct {
 	Summary         string
 	Description     string
 	IssuedDate      string
+	UpdatedDate     string
 	Type            string
 	Severity        string
 	RebootSuggested bool
@@ -68,7 +69,7 @@ type RpmListFilters struct {
 }
 
 type ErrataListFilters struct {
-	ID       string
+	Search   string
 	Type     string
 	Severity string
 }
@@ -258,14 +259,14 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 	countQueryOpen := "select count(*) as total FROM rpm_updaterecord re WHERE re.content_ptr_id IN "
 
 	args := pgx.NamedArgs{
-		"idFilter":       filterOpts.ID,
+		"searchFilter":   filterOpts.Search,
 		"typeFilter":     filterOpts.Type,
 		"severityFilter": filterOpts.Severity,
 	}
 
 	var concatFilter strings.Builder
-	if filterOpts.ID != "" {
-		concatFilter.WriteString(" AND re.id ILIKE CONCAT( '%', @idFilter::text, '%')")
+	if filterOpts.Search != "" {
+		concatFilter.WriteString(" AND (re.id ILIKE CONCAT( '%', @searchFilter::text, '%') OR re.summary ILIKE CONCAT( '%', @searchFilter::text, '%'))")
 	}
 	if filterOpts.Type != "" {
 		concatFilter.WriteString(" AND re.type = @typeFilter::text")
@@ -285,7 +286,7 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 		return nil, 0, err
 	}
 
-	queryOpen := `SELECT re.content_ptr_id as id, re.id as ErrataId, re.title, re.summary, re.description, re.issued_date as IssuedDate, re.type, re.severity, re.reboot_suggested as RebootSuggested
+	queryOpen := `SELECT re.content_ptr_id as id, re.id as ErrataId, re.title, re.summary, re.description, re.issued_date as IssuedDate, re.updated_date as UpdatedDate, re.type, re.severity, re.reboot_suggested as RebootSuggested
               FROM rpm_updaterecord re WHERE re.content_ptr_id IN `
 
 	args["limit"] = pageOpts.Limit
