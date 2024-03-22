@@ -290,6 +290,7 @@ func (r *RpmSuite) TestRpmRepositoryVersionErrataListFilter() {
 	emptyList, total, err := r.tangy.RpmRepositoryVersionErrataList(context.Background(), []string{*firstVersionHref}, tangy.ErrataListFilters{Type: "secu"}, tangy.PageOptions{})
 	require.NoError(r.T(), err)
 	assert.Empty(r.T(), emptyList)
+	assert.Equal(r.T(), total, 0)
 }
 
 func (r *RpmSuite) TestRpmRepositoryVersionPackageListNameFilter() {
