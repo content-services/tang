@@ -47,6 +47,18 @@ type RpmListItem struct {
 	Summary string // The summary of the rpm
 }
 
+type ErrataListItem struct {
+	Id              string
+	ErrataId        string
+	Title           string
+	Summary         string
+	Description     string
+	IssuedDate      string
+	UpdatedDate     string
+	Type            string
+	Severity        string
+	RebootSuggested bool
+}
 type PageOptions struct {
 	Offset int
 	Limit  int
@@ -54,6 +66,12 @@ type PageOptions struct {
 
 type RpmListFilters struct {
 	Name string
+}
+
+type ErrataListFilters struct {
+	Search   string
+	Type     string
+	Severity string
 }
 
 // RpmRepositoryVersionPackageSearch search for RPMs, by name, associated to repository hrefs, returning an amount up to limit
@@ -214,6 +232,78 @@ func (t *tangyImpl) RpmRepositoryVersionEnvironmentSearch(ctx context.Context, h
 	}
 
 	return rpms, nil
+}
+
+// RpmRepositoryVersionErrataList List Errat within a repository version, with pagination, and an optional filters
+func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []string, filterOpts ErrataListFilters, pageOpts PageOptions) ([]ErrataListItem, int, error) {
+	if len(hrefs) == 0 {
+		return []ErrataListItem{}, 0, nil
+	}
+
+	conn, err := t.pool.Acquire(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer conn.Release()
+
+	if pageOpts.Limit == 0 {
+		pageOpts.Limit = DefaultLimit
+	}
+
+	repoVerMap, err := parseRepositoryVersionHrefsMap(hrefs)
+
+	if err != nil {
+		return nil, 0, fmt.Errorf("error parsing repository version hrefs: %w", err)
+	}
+
+	countQueryOpen := "select count(*) as total FROM rpm_updaterecord re WHERE re.content_ptr_id IN "
+
+	args := pgx.NamedArgs{
+		"searchFilter":   filterOpts.Search,
+		"typeFilter":     filterOpts.Type,
+		"severityFilter": filterOpts.Severity,
+	}
+
+	var concatFilter strings.Builder
+	if filterOpts.Search != "" {
+		concatFilter.WriteString(" AND (re.id ILIKE CONCAT( '%', @searchFilter::text, '%') OR re.summary ILIKE CONCAT( '%', @searchFilter::text, '%'))")
+	}
+	if filterOpts.Type != "" {
+		concatFilter.WriteString(" AND re.type = @typeFilter::text")
+	}
+	if filterOpts.Severity != "" {
+		concatFilter.WriteString(" AND re.severity = @severityFilter::text")
+	}
+	filterQuery := concatFilter.String()
+
+	innerUnion := contentIdsInVersions(repoVerMap, &args)
+
+	var countTotal int
+	err = conn.QueryRow(ctx, countQueryOpen+innerUnion+filterQuery,
+		args).Scan(&countTotal)
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	queryOpen := `SELECT re.content_ptr_id as id, re.id as ErrataId, re.title, re.summary, re.description, re.issued_date as IssuedDate, re.updated_date as UpdatedDate, re.type, re.severity, re.reboot_suggested as RebootSuggested
+              FROM rpm_updaterecord re WHERE re.content_ptr_id IN `
+
+	args["limit"] = pageOpts.Limit
+	args["offset"] = pageOpts.Offset
+	rows, err := conn.Query(ctx, queryOpen+innerUnion+filterQuery+
+		" ORDER BY re.id ASC, re.title ASC, re.issued_date ASC, re.type ASC, re.severity ASC LIMIT @limit OFFSET @offset",
+		args)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	errata, err := pgx.CollectRows(rows, pgx.RowToStructByName[ErrataListItem])
+
+	if err != nil {
+		return nil, 0, err
+	}
+	return errata, countTotal, nil
 }
 
 // RpmRepositoryVersionPackageList List RPMs within a repository version, with pagination, and an optional name filter
