@@ -273,18 +273,20 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 	if filterOpts.Type != nil {
 		filterOpts.Type = strings.Split(filterOpts.Type[0], ",")
 		args["typeFilter"] = filterOpts.Type
-		concatFilter.WriteString(" AND re.type = ANY(@typeFilter)")
+		concatFilter.WriteString(" AND (re.type = ANY(@typeFilter)")
 		if containsString(filterOpts.Type, "other") {
 			concatFilter.WriteString(" OR NOT (re.type = ANY(@typeList))")
 		}
+		concatFilter.WriteString(")")
 	}
 	if filterOpts.Severity != nil {
 		filterOpts.Severity = strings.Split(filterOpts.Severity[0], ",")
 		args["severityFilter"] = filterOpts.Severity
-		concatFilter.WriteString(" AND re.severity = ANY(@severityFilter)")
+		concatFilter.WriteString(" AND (re.severity = ANY(@severityFilter)")
 		if containsString(filterOpts.Severity, "Unknown") {
 			concatFilter.WriteString(" OR NOT (re.severity = ANY(@severityList))")
 		}
+		concatFilter.WriteString(")")
 	}
 	filterQuery := concatFilter.String()
 
