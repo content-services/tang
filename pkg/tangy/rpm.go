@@ -70,8 +70,8 @@ type RpmListFilters struct {
 
 type ErrataListFilters struct {
 	Search   string
-	Type     string
-	Severity string
+	Type     []string
+	Severity []string
 }
 
 // RpmRepositoryVersionPackageSearch search for RPMs, by name, associated to repository hrefs, returning an amount up to limit
@@ -234,7 +234,7 @@ func (t *tangyImpl) RpmRepositoryVersionEnvironmentSearch(ctx context.Context, h
 	return rpms, nil
 }
 
-// RpmRepositoryVersionErrataList List Errat within a repository version, with pagination, and an optional filters
+// RpmRepositoryVersionErrataList List Errata within a repository version, with pagination, and optional filters
 func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []string, filterOpts ErrataListFilters, pageOpts PageOptions) ([]ErrataListItem, int, error) {
 	if len(hrefs) == 0 {
 		return []ErrataListItem{}, 0, nil
@@ -262,17 +262,29 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 		"searchFilter":   filterOpts.Search,
 		"typeFilter":     filterOpts.Type,
 		"severityFilter": filterOpts.Severity,
+		"typeList":       []string{"security", "bugfix", "enhancement"},
+		"severityList":   []string{"Important", "Critical", "Moderate", "Low"},
 	}
 
 	var concatFilter strings.Builder
 	if filterOpts.Search != "" {
 		concatFilter.WriteString(" AND (re.id ILIKE CONCAT( '%', @searchFilter::text, '%') OR re.summary ILIKE CONCAT( '%', @searchFilter::text, '%'))")
 	}
-	if filterOpts.Type != "" {
-		concatFilter.WriteString(" AND re.type = @typeFilter::text")
+	if filterOpts.Type != nil {
+		filterOpts.Type = strings.Split(filterOpts.Type[0], ",")
+		args["typeFilter"] = filterOpts.Type
+		concatFilter.WriteString(" AND re.type = ANY(@typeFilter)")
+		if containsString(filterOpts.Type, "other") {
+			concatFilter.WriteString(" OR NOT (re.type = ANY(@typeList))")
+		}
 	}
-	if filterOpts.Severity != "" {
-		concatFilter.WriteString(" AND re.severity = @severityFilter::text")
+	if filterOpts.Severity != nil {
+		filterOpts.Severity = strings.Split(filterOpts.Severity[0], ",")
+		args["severityFilter"] = filterOpts.Severity
+		concatFilter.WriteString(" AND re.severity = ANY(@severityFilter)")
+		if containsString(filterOpts.Severity, "Unknown") {
+			concatFilter.WriteString(" OR NOT (re.severity = ANY(@severityList))")
+		}
 	}
 	filterQuery := concatFilter.String()
 
@@ -412,4 +424,13 @@ func unionSlices[T comparable](a []T, b []T) []T {
 		}
 	}
 	return a
+}
+
+func containsString(a []string, b string) bool {
+	for _, c := range a {
+		if c == b {
+			return true
+		}
+	}
+	return false
 }
