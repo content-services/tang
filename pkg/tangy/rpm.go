@@ -271,7 +271,9 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 		concatFilter.WriteString(" AND (re.id ILIKE CONCAT( '%', @searchFilter::text, '%') OR re.summary ILIKE CONCAT( '%', @searchFilter::text, '%'))")
 	}
 	if filterOpts.Type != nil {
-		filterOpts.Type = strings.Split(filterOpts.Type[0], ",")
+		if strings.Contains(filterOpts.Type[0], ",") {
+			filterOpts.Type = strings.Split(filterOpts.Type[0], ",")
+		}
 		args["typeFilter"] = filterOpts.Type
 		concatFilter.WriteString(" AND (re.type = ANY(@typeFilter)")
 		if containsString(filterOpts.Type, "other") {
@@ -280,7 +282,9 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 		concatFilter.WriteString(")")
 	}
 	if filterOpts.Severity != nil {
-		filterOpts.Severity = strings.Split(filterOpts.Severity[0], ",")
+		if strings.Contains(filterOpts.Severity[0], ",") {
+			filterOpts.Severity = strings.Split(filterOpts.Severity[0], ",")
+		}
 		args["severityFilter"] = filterOpts.Severity
 		concatFilter.WriteString(" AND (re.severity = ANY(@severityFilter)")
 		if containsString(filterOpts.Severity, "Unknown") {
