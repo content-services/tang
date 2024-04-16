@@ -264,12 +264,14 @@ func (r *RpmSuite) TestRpmRepositoryVersionErrataListFilter() {
 	require.NoError(r.T(), err)
 	assert.NotEmpty(r.T(), singleList)
 	assert.Equal(r.T(), len(singleList), 1)
+	assert.Equal(r.T(), total, 4)
 
 	// test offset
 	singleList, total, err = r.tangy.RpmRepositoryVersionErrataList(context.Background(), []string{*firstVersionHref}, tangy.ErrataListFilters{}, tangy.PageOptions{Offset: 3})
 	require.NoError(r.T(), err)
 	assert.NotEmpty(r.T(), singleList)
 	assert.Equal(r.T(), len(singleList), 1)
+	assert.Equal(r.T(), total, 4)
 
 	// id filter partial
 	singleList, total, err = r.tangy.RpmRepositoryVersionErrataList(context.Background(), []string{*firstVersionHref}, tangy.ErrataListFilters{Search: "0055"}, tangy.PageOptions{})
