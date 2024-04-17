@@ -54,7 +54,7 @@ type ErrataListItem struct {
 	Summary         string
 	Description     string
 	IssuedDate      string
-	UpdatedDate     string
+	UpdatedDate     *string
 	Type            string
 	Severity        string
 	RebootSuggested bool
