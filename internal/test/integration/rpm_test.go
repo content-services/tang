@@ -29,8 +29,8 @@ type RpmSuite struct {
 const testRepoName = "zoo"
 const testRepoURL = "https://rverdile.fedorapeople.org/dummy-repos/comps/repo1/"
 const testRepoURLTwo = "https://rverdile.fedorapeople.org/dummy-repos/comps/repo2/"
-const testRepoNameWithErrata = "rpm-advisory-diff-repo"
-const testRepoURLWithErrata = "https://fixtures.pulpproject.org/rpm-advisory-diff-repo/"
+const testRepoNameWithErrata = "multiple-errata"
+const testRepoURLWithErrata = "https://stephenw.fedorapeople.org/fakerepos/multiple_errata/"
 
 func (r *RpmSuite) CreateTestRepository(t *testing.T, repoName string, repoUrl string) {
 	_, err := r.client.LookupOrCreateDomain(r.domainName)
@@ -257,21 +257,21 @@ func (r *RpmSuite) TestRpmRepositoryVersionErrataListFilter() {
 	singleList, total, err := r.tangy.RpmRepositoryVersionErrataList(context.Background(), []string{*firstVersionHref}, tangy.ErrataListFilters{Search: ""}, tangy.PageOptions{})
 	require.NoError(r.T(), err)
 	assert.NotEmpty(r.T(), singleList)
-	assert.Equal(r.T(), total, 4)
+	assert.Equal(r.T(), total, 5)
 
 	// test limit
 	singleList, total, err = r.tangy.RpmRepositoryVersionErrataList(context.Background(), []string{*firstVersionHref}, tangy.ErrataListFilters{}, tangy.PageOptions{Limit: 1})
 	require.NoError(r.T(), err)
 	assert.NotEmpty(r.T(), singleList)
 	assert.Equal(r.T(), len(singleList), 1)
-	assert.Equal(r.T(), total, 4)
+	assert.Equal(r.T(), total, 5)
 
 	// test offset
 	singleList, total, err = r.tangy.RpmRepositoryVersionErrataList(context.Background(), []string{*firstVersionHref}, tangy.ErrataListFilters{}, tangy.PageOptions{Offset: 3})
 	require.NoError(r.T(), err)
 	assert.NotEmpty(r.T(), singleList)
-	assert.Equal(r.T(), len(singleList), 1)
-	assert.Equal(r.T(), total, 4)
+	assert.Equal(r.T(), len(singleList), 2)
+	assert.Equal(r.T(), total, 5)
 
 	// id filter partial
 	singleList, total, err = r.tangy.RpmRepositoryVersionErrataList(context.Background(), []string{*firstVersionHref}, tangy.ErrataListFilters{Search: "0055"}, tangy.PageOptions{})
@@ -298,19 +298,19 @@ func (r *RpmSuite) TestRpmRepositoryVersionErrataListFilter() {
 	assert.Equal(r.T(), total, 0)
 
 	// severity filter
-	singleList, total, err = r.tangy.RpmRepositoryVersionErrataList(context.Background(), []string{*firstVersionHref}, tangy.ErrataListFilters{Severity: []string{"Moderate"}}, tangy.PageOptions{})
+	singleList, total, err = r.tangy.RpmRepositoryVersionErrataList(context.Background(), []string{*firstVersionHref}, tangy.ErrataListFilters{Severity: []string{"low"}}, tangy.PageOptions{})
 	require.NoError(r.T(), err)
-	assert.Empty(r.T(), singleList)
-	assert.Equal(r.T(), total, 0)
+	assert.NotEmpty(r.T(), singleList)
+	assert.Equal(r.T(), total, 1)
 
 	// multiple severities filter
-	singleList, total, err = r.tangy.RpmRepositoryVersionErrataList(context.Background(), []string{*firstVersionHref}, tangy.ErrataListFilters{Severity: []string{"Moderate", "Critical"}}, tangy.PageOptions{})
+	singleList, total, err = r.tangy.RpmRepositoryVersionErrataList(context.Background(), []string{*firstVersionHref}, tangy.ErrataListFilters{Severity: []string{"low", "Unknown"}}, tangy.PageOptions{})
 	require.NoError(r.T(), err)
-	assert.Empty(r.T(), singleList)
-	assert.Equal(r.T(), total, 0)
+	assert.NotEmpty(r.T(), singleList)
+	assert.Equal(r.T(), total, 5)
 
 	// severity filter partial (empty)
-	emptyList, total, err = r.tangy.RpmRepositoryVersionErrataList(context.Background(), []string{*firstVersionHref}, tangy.ErrataListFilters{Severity: []string{"Moder"}}, tangy.PageOptions{})
+	emptyList, total, err = r.tangy.RpmRepositoryVersionErrataList(context.Background(), []string{*firstVersionHref}, tangy.ErrataListFilters{Severity: []string{"lo"}}, tangy.PageOptions{})
 	require.NoError(r.T(), err)
 	assert.Empty(r.T(), emptyList)
 	assert.Equal(r.T(), total, 0)
