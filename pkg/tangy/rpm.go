@@ -310,7 +310,7 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 	args["limit"] = pageOpts.Limit
 	args["offset"] = pageOpts.Offset
 	rows, err := conn.Query(ctx, queryOpen+innerUnion+filterQuery+
-		" ORDER BY re.id ASC, re.title ASC, re.issued_date ASC, re.type ASC, re.severity ASC LIMIT @limit OFFSET @offset",
+		" ORDER BY re.issued_date DESC, re.title ASC, re.type ASC, re.severity ASC LIMIT @limit OFFSET @offset",
 		args)
 	if err != nil {
 		return nil, 0, err
