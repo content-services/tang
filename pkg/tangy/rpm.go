@@ -62,6 +62,7 @@ type ErrataListItem struct {
 type PageOptions struct {
 	Offset int
 	Limit  int
+	SortBy string
 }
 
 type RpmListFilters struct {
@@ -309,8 +310,31 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 
 	args["limit"] = pageOpts.Limit
 	args["offset"] = pageOpts.Offset
+	args["sort_by"] = pageOpts.SortBy
+
+	var orderBy string
+	sortField := strings.Split(pageOpts.SortBy, ":")[0]
+	switch sortField {
+	case "issued_date":
+		orderBy = "re.issued_date"
+	case "updated_date":
+		orderBy = "re.updated_date"
+	case "type":
+		orderBy = "re.type"
+	case "severity":
+		orderBy = "re.severity"
+	default:
+		orderBy = "re.issued_date"
+	}
+
+	if strings.Contains(pageOpts.SortBy, "asc") {
+		orderBy += " ASC"
+	} else {
+		orderBy += " DESC"
+	}
+
 	rows, err := conn.Query(ctx, queryOpen+innerUnion+filterQuery+
-		" ORDER BY re.issued_date DESC, re.title ASC, re.type ASC, re.severity ASC LIMIT @limit OFFSET @offset",
+		" ORDER BY "+orderBy+" LIMIT @limit OFFSET @offset",
 		args)
 	if err != nil {
 		return nil, 0, err
