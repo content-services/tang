@@ -317,7 +317,6 @@ func (r *RpmSuite) TestRpmRepositoryVersionErrataListFilter() {
 }
 
 func (r *RpmSuite) TestRpmRepositoryVersionErrataListSort() {
-	r.CreateTestRepository(r.T(), testRepoNameWithErrata, testRepoURLWithErrata)
 	resp, err := r.client.GetRpmRepositoryByName(r.domainName, testRepoNameWithErrata)
 	require.NoError(r.T(), err)
 	require.NotNil(r.T(), resp.LatestVersionHref)
