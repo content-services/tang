@@ -316,6 +316,62 @@ func (r *RpmSuite) TestRpmRepositoryVersionErrataListFilter() {
 	assert.Equal(r.T(), total, 0)
 }
 
+func (r *RpmSuite) TestRpmRepositoryVersionErrataListSort() {
+	resp, err := r.client.GetRpmRepositoryByName(r.domainName, testRepoNameWithErrata)
+	require.NoError(r.T(), err)
+	require.NotNil(r.T(), resp.LatestVersionHref)
+	firstVersionHref := resp.LatestVersionHref
+
+	// no sort specified, defaults to issued_date desc
+	errata, total, err := r.tangy.RpmRepositoryVersionErrataList(context.Background(), []string{*firstVersionHref}, tangy.ErrataListFilters{}, tangy.PageOptions{})
+	require.NoError(r.T(), err)
+	assert.NotEmpty(r.T(), errata)
+	assert.Equal(r.T(), errata[0].IssuedDate, "2013-01-27 16:08:09")
+	assert.Equal(r.T(), total, 6)
+
+	// sorting by issued_date asc
+	errata, total, err = r.tangy.RpmRepositoryVersionErrataList(context.Background(), []string{*firstVersionHref}, tangy.ErrataListFilters{}, tangy.PageOptions{SortBy: "issued_date:asc"})
+	require.NoError(r.T(), err)
+	assert.NotEmpty(r.T(), errata)
+	assert.Equal(r.T(), errata[0].IssuedDate, "2009-05-20 00:00:00")
+	assert.Equal(r.T(), total, 6)
+
+	// sorting by issued_date desc
+	errata, total, err = r.tangy.RpmRepositoryVersionErrataList(context.Background(), []string{*firstVersionHref}, tangy.ErrataListFilters{}, tangy.PageOptions{SortBy: "issued_date:desc"})
+	require.NoError(r.T(), err)
+	assert.NotEmpty(r.T(), errata)
+	assert.Equal(r.T(), errata[0].IssuedDate, "2013-01-27 16:08:09")
+	assert.Equal(r.T(), total, 6)
+
+	// sorting by type asc
+	errata, total, err = r.tangy.RpmRepositoryVersionErrataList(context.Background(), []string{*firstVersionHref}, tangy.ErrataListFilters{}, tangy.PageOptions{SortBy: "type:asc"})
+	require.NoError(r.T(), err)
+	assert.NotEmpty(r.T(), errata)
+	assert.Equal(r.T(), errata[0].Type, "bugfix")
+	assert.Equal(r.T(), total, 6)
+
+	// sorting by type desc
+	errata, total, err = r.tangy.RpmRepositoryVersionErrataList(context.Background(), []string{*firstVersionHref}, tangy.ErrataListFilters{}, tangy.PageOptions{SortBy: "type:desc"})
+	require.NoError(r.T(), err)
+	assert.NotEmpty(r.T(), errata)
+	assert.Equal(r.T(), errata[0].Type, "security")
+	assert.Equal(r.T(), total, 6)
+
+	// sorting by severity asc
+	errata, total, err = r.tangy.RpmRepositoryVersionErrataList(context.Background(), []string{*firstVersionHref}, tangy.ErrataListFilters{}, tangy.PageOptions{SortBy: "severity:asc"})
+	require.NoError(r.T(), err)
+	assert.NotEmpty(r.T(), errata)
+	assert.Equal(r.T(), errata[0].Severity, "") // some errata in this repo have no severity listed, these show up first when sorting ascending
+	assert.Equal(r.T(), total, 6)
+
+	// sorting by severity desc
+	errata, total, err = r.tangy.RpmRepositoryVersionErrataList(context.Background(), []string{*firstVersionHref}, tangy.ErrataListFilters{}, tangy.PageOptions{SortBy: "severity:desc"})
+	require.NoError(r.T(), err)
+	assert.NotEmpty(r.T(), errata)
+	assert.Equal(r.T(), errata[0].Severity, "Moderate")
+	assert.Equal(r.T(), total, 6)
+}
+
 func (r *RpmSuite) TestRpmRepositoryVersionPackageListNameFilter() {
 	resp, err := r.client.GetRpmRepositoryByName(r.domainName, testRepoName)
 	require.NoError(r.T(), err)
