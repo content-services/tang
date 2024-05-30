@@ -58,6 +58,7 @@ type ErrataListItem struct {
 	Type            string
 	Severity        string
 	RebootSuggested bool
+	CVEs            []string
 }
 type PageOptions struct {
 	Offset int
@@ -305,7 +306,11 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 		return nil, 0, err
 	}
 
-	queryOpen := `SELECT re.content_ptr_id as id, re.id as ErrataId, re.title, re.summary, re.description, re.issued_date as IssuedDate, re.updated_date as UpdatedDate, re.type, re.severity, re.reboot_suggested as RebootSuggested
+	queryOpen := `SELECT re.content_ptr_id as id, re.id as ErrataId, re.title, re.summary, re.description, re.issued_date as IssuedDate, re.updated_date as UpdatedDate, re.type, re.severity, re.reboot_suggested as RebootSuggested, 
+              (SELECT ARRAY_AGG(ru.ref_id)
+                FROM rpm_updatereference ru 
+                WHERE ru.update_record_id = re.content_ptr_id
+                AND ru.ref_type = 'cve') AS CVEs
               FROM rpm_updaterecord re WHERE re.content_ptr_id IN `
 
 	args["limit"] = pageOpts.Limit
