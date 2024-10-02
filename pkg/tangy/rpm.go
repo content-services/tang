@@ -101,7 +101,7 @@ func (t *tangyImpl) RpmRepositoryVersionPackageSearch(ctx context.Context, hrefs
 	innerUnion := contentIdsInVersions(repoVerMap, &args)
 
 	query := `SELECT DISTINCT ON (rp.name) rp.name, rp.summary
-              FROM rpm_package rp WHERE rp.content_ptr_id IN `
+              FROM rpm_package rp `
 
 	rows, err := conn.Query(context.Background(), query+innerUnion+" AND rp.name ILIKE CONCAT( '%', @nameFilter::text, '%') ORDER BY rp.name  LIMIT @limit", args)
 	if err != nil {
@@ -140,7 +140,7 @@ func (t *tangyImpl) RpmRepositoryVersionPackageGroupSearch(ctx context.Context, 
 	innerUnion := contentIdsInVersions(repoVerMap, &args)
 
 	query := `SELECT DISTINCT ON (rp.name, rp.id, rp.packages) rp.name, rp.id, rp.description, rp.packages
-              FROM rpm_packagegroup rp WHERE rp.content_ptr_id IN 
+              FROM rpm_packagegroup rp 
 			`
 
 	rows, err := conn.Query(ctx, query+innerUnion+"AND rp.name ILIKE CONCAT( '%', @nameFilter::text, '%') ORDER BY rp.name", args)
@@ -221,7 +221,7 @@ func (t *tangyImpl) RpmRepositoryVersionEnvironmentSearch(ctx context.Context, h
 	innerUnion := contentIdsInVersions(repoVerMap, &args)
 
 	query := `SELECT DISTINCT ON (rp.name, rp.id) rp.name, rp.id, rp.description
-              FROM rpm_packageenvironment rp WHERE rp.content_ptr_id IN 
+              FROM rpm_packageenvironment rp 
 			`
 
 	rows, err := conn.Query(ctx, query+innerUnion+" AND rp.name ILIKE CONCAT( '%', @nameFilter::text, '%') ORDER BY rp.name  LIMIT @limit", args)
@@ -258,7 +258,7 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 		return nil, 0, fmt.Errorf("error parsing repository version hrefs: %w", err)
 	}
 
-	countQueryOpen := "select count(*) as total FROM rpm_updaterecord re WHERE re.content_ptr_id IN "
+	countQueryOpen := "select count(distinct rp.content_ptr_id) as total FROM rpm_updaterecord rp "
 
 	args := pgx.NamedArgs{
 		"searchFilter":   filterOpts.Search,
@@ -270,16 +270,16 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 
 	var concatFilter strings.Builder
 	if filterOpts.Search != "" {
-		concatFilter.WriteString(" AND (re.id ILIKE CONCAT( '%', @searchFilter::text, '%') OR re.summary ILIKE CONCAT( '%', @searchFilter::text, '%'))")
+		concatFilter.WriteString(" AND (rp.id ILIKE CONCAT( '%', @searchFilter::text, '%') OR rp.summary ILIKE CONCAT( '%', @searchFilter::text, '%'))")
 	}
 	if filterOpts.Type != nil {
 		if strings.Contains(filterOpts.Type[0], ",") {
 			filterOpts.Type = strings.Split(filterOpts.Type[0], ",")
 		}
 		args["typeFilter"] = filterOpts.Type
-		concatFilter.WriteString(" AND (re.type = ANY(@typeFilter)")
+		concatFilter.WriteString(" AND (rp.type = ANY(@typeFilter)")
 		if containsString(filterOpts.Type, "other") {
-			concatFilter.WriteString(" OR NOT (re.type = ANY(@typeList))")
+			concatFilter.WriteString(" OR NOT (rp.type = ANY(@typeList))")
 		}
 		concatFilter.WriteString(")")
 	}
@@ -288,9 +288,9 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 			filterOpts.Severity = strings.Split(filterOpts.Severity[0], ",")
 		}
 		args["severityFilter"] = filterOpts.Severity
-		concatFilter.WriteString(" AND (re.severity = ANY(@severityFilter)")
+		concatFilter.WriteString(" AND (rp.severity = ANY(@severityFilter)")
 		if containsString(filterOpts.Severity, "Unknown") {
-			concatFilter.WriteString(" OR NOT (re.severity = ANY(@severityList))")
+			concatFilter.WriteString(" OR NOT (rp.severity = ANY(@severityList))")
 		}
 		concatFilter.WriteString(")")
 	}
@@ -306,12 +306,12 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 		return nil, 0, err
 	}
 
-	queryOpen := `SELECT re.content_ptr_id as id, re.id as ErrataId, re.title, re.summary, re.description, re.issued_date as IssuedDate, re.updated_date as UpdatedDate, re.type, re.severity, re.reboot_suggested as RebootSuggested, 
+	queryOpen := `SELECT distinct rp.content_ptr_id as id, rp.id as ErrataId, rp.title, rp.summary, rp.description, rp.issued_date as IssuedDate, rp.updated_date as UpdatedDate, rp.type, rp.severity, rp.reboot_suggested as RebootSuggested, 
               (SELECT ARRAY_AGG(ru.ref_id)
                 FROM rpm_updatereference ru 
-                WHERE ru.update_record_id = re.content_ptr_id
+                WHERE ru.update_record_id = rp.content_ptr_id
                 AND ru.ref_type = 'cve') AS CVEs
-              FROM rpm_updaterecord re WHERE re.content_ptr_id IN `
+              FROM rpm_updaterecord rp `
 
 	args["limit"] = pageOpts.Limit
 	args["offset"] = pageOpts.Offset
@@ -321,15 +321,15 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 	sortField := strings.Split(pageOpts.SortBy, ":")[0]
 	switch sortField {
 	case "issued_date":
-		orderBy = "re.issued_date"
+		orderBy = "rp.issued_date"
 	case "updated_date":
-		orderBy = "re.updated_date"
+		orderBy = "rp.updated_date"
 	case "type":
-		orderBy = "re.type"
+		orderBy = "rp.type"
 	case "severity":
-		orderBy = "re.severity"
+		orderBy = "rp.severity"
 	default:
-		orderBy = "re.issued_date"
+		orderBy = "rp.issued_date"
 	}
 
 	if strings.Contains(pageOpts.SortBy, "asc") {
@@ -374,7 +374,7 @@ func (t *tangyImpl) RpmRepositoryVersionPackageList(ctx context.Context, hrefs [
 		return nil, 0, fmt.Errorf("error parsing repository version hrefs: %w", err)
 	}
 
-	countQueryOpen := "select count(*) as total FROM rpm_package rp WHERE rp.content_ptr_id IN "
+	countQueryOpen := "select count(distinct(rp.content_ptr_id)) as total FROM rpm_package rp "
 	args := pgx.NamedArgs{"nameFilter": "%" + filterOpts.Name + "%"}
 	innerUnion := contentIdsInVersions(repoVerMap, &args)
 
@@ -384,8 +384,8 @@ func (t *tangyImpl) RpmRepositoryVersionPackageList(ctx context.Context, hrefs [
 		return nil, 0, err
 	}
 
-	queryOpen := `SELECT rp.content_ptr_id as id, rp.name, rp.version, rp.arch, rp.release, rp.epoch, rp.summary
-              FROM rpm_package rp WHERE rp.content_ptr_id IN `
+	queryOpen := `SELECT distinct rp.content_ptr_id as id, rp.name, rp.version, rp.arch, rp.release, rp.epoch, rp.summary
+              FROM rpm_package rp `
 
 	args["limit"] = pageOpts.Limit
 	args["offset"] = pageOpts.Offset

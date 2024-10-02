@@ -18,25 +18,28 @@ func contentIdsInVersion(repoId string, versionNum int, namedArgs *pgx.NamedArgs
 	repoIdName := fmt.Sprintf("%v%v", "repoName", ran)
 	versionNumName := fmt.Sprintf("%v%v", "versionNum", ran)
 	query := `
-                SELECT crc.content_id
-                FROM core_repositorycontent crc
-                INNER JOIN core_repositoryversion crv ON (crc.version_added_id = crv.pulp_id)
-                LEFT OUTER JOIN core_repositoryversion crv2 ON (crc.version_removed_id = crv2.pulp_id)
-                WHERE crv.repository_id = @%v AND crv.number <= @%v AND NOT (crv2.number <= @%v AND crv2.number IS NOT NULL)
+                (crv.repository_id = @%v AND crv.number <= @%v AND NOT (crv2.number <= @%v AND crv2.number IS NOT NULL))
 	`
 	(*namedArgs)[repoIdName] = repoId
 	(*namedArgs)[versionNumName] = versionNum
 	return fmt.Sprintf(query, repoIdName, versionNumName, versionNumName)
 }
 
-// Creates a sub query (including parenthesis) to lookup the content IDs of a list of repository versions.
+// returns part of a query that joins a table to the needed tables to select content units in a given set of versions
 //
-//	Takes in a pointer to Named args in order to add required named arguments for the query.  Multiple queries are created
-//	 and UNION'd together
+//	 The return of this functions should be added to a query such as "select ** from TABLE rp" query,
+//	 Where rp has a column 'content_ptr_id', such as rpm_updaterecord, rpm_package, etc.
+//		Takes in a pointer to Named args in order to add required named arguments for the query.
 func contentIdsInVersions(repoVerMap []ParsedRepoVersion, namedArgs *pgx.NamedArgs) string {
+	mainQuery := ` 				
+                INNER JOIN core_repositorycontent crc on rp.content_ptr_id = crc.content_id
+                INNER JOIN core_repositoryversion crv ON (crc.version_added_id = crv.pulp_id)
+                LEFT OUTER JOIN core_repositoryversion crv2 ON (crc.version_removed_id = crv2.pulp_id)
+                WHERE
+                    `
 	queries := []string{}
 	for _, parsed := range repoVerMap {
 		queries = append(queries, contentIdsInVersion(parsed.RepositoryUUID, parsed.Version, namedArgs))
 	}
-	return fmt.Sprintf("( %v ) ", strings.Join(queries, " UNION "))
+	return fmt.Sprintf("%v (%v)", mainQuery, strings.Join(queries, " OR "))
 }
