@@ -416,7 +416,7 @@ func (t *tangyImpl) RpmRepositoryVersionModuleStreams(ctx context.Context, hrefs
 
 	var countTotal int
 
-	err = conn.QueryRow(ctx, countQueryOpen+innerUnion+filter+")", args).Scan(&countTotal)
+	err = conn.QueryRow(ctx, countQueryOpen+innerUnion+filter+") as list", args).Scan(&countTotal)
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
