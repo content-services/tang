@@ -1,0 +1,11 @@
+with-expecter: false
+inpackage: True
+dir: "./pkg/tangy"
+mockname: "Mock{{.InterfaceName}}"
+outpkg: "{{.PackageName}}"
+filename: "{{.InterfaceName}}_mock.go"
+all: True
+packages:
+  github.com/content-services/tang:
+    config:
+      recursive: True
