@@ -33,3 +33,6 @@ compose_files/pulp/pulp-oci-images
 
 #config
 configs/config.yaml
+
+#mockery binaries
+bin
