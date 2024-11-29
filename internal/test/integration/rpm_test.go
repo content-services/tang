@@ -31,6 +31,8 @@ const testRepoURL = "https://rverdile.fedorapeople.org/dummy-repos/comps/repo1/"
 const testRepoURLTwo = "https://rverdile.fedorapeople.org/dummy-repos/comps/repo2/"
 const testRepoNameWithErrata = "multiple-errata"
 const testRepoURLWithErrata = "https://stephenw.fedorapeople.org/fakerepos/multiple_errata/"
+const rpmNameWithModule = "rpm-with-modules"
+const rpmUrlWithModule = "https://fixtures.pulpproject.org/rpm-with-modules-modified/"
 
 func (r *RpmSuite) CreateTestRepository(t *testing.T, repoName string, repoUrl string) {
 	_, err := r.client.LookupOrCreateDomain(r.domainName)
@@ -370,6 +372,49 @@ func (r *RpmSuite) TestRpmRepositoryVersionErrataListSort() {
 	assert.NotEmpty(r.T(), errata)
 	assert.Equal(r.T(), errata[0].Severity, "Moderate")
 	assert.Equal(r.T(), total, 6)
+}
+
+func (r *RpmSuite) TestRpmRepositoryVersionModuleStreamsList() {
+	resp, err := r.client.GetRpmRepositoryByName(r.domainName, testRepoName)
+	require.NoError(r.T(), err)
+	firstVersionHref := resp.LatestVersionHref
+	require.NotNil(r.T(), firstVersionHref)
+
+	// expect empty
+	singleList, total, err := r.tangy.RpmRepositoryVersionModuleStreamsList(context.Background(), []string{*firstVersionHref}, tangy.ModuleStreamListFilters{}, tangy.PageOptions{})
+	require.NoError(r.T(), err)
+	assert.Empty(r.T(), singleList)
+	assert.Equal(r.T(), total, 0)
+
+	r.CreateTestRepository(r.T(), rpmNameWithModule, rpmUrlWithModule)
+	resp, err = r.client.GetRpmRepositoryByName(r.domainName, rpmNameWithModule)
+	require.NoError(r.T(), err)
+	require.NotNil(r.T(), resp.LatestVersionHref)
+	firstVersionHref = resp.LatestVersionHref
+
+	// Expect populated
+	singleList, total, err = r.tangy.RpmRepositoryVersionModuleStreamsList(context.Background(), []string{*firstVersionHref}, tangy.ModuleStreamListFilters{}, tangy.PageOptions{})
+	require.NoError(r.T(), err)
+	assert.NotEmpty(r.T(), singleList)
+	assert.Equal(r.T(), 3, total)
+
+	// Test search
+	singleList, total, err = r.tangy.RpmRepositoryVersionModuleStreamsList(context.Background(), []string{*firstVersionHref}, tangy.ModuleStreamListFilters{Search: "Duck"}, tangy.PageOptions{})
+	require.NoError(r.T(), err)
+	assert.NotEmpty(r.T(), singleList)
+	assert.Equal(r.T(), 1, total)
+
+	// Test package name list filter
+	singleList, total, err = r.tangy.RpmRepositoryVersionModuleStreamsList(context.Background(), []string{*firstVersionHref}, tangy.ModuleStreamListFilters{RpmNames: []string{"walrus", "kangaroo"}}, tangy.PageOptions{})
+	require.NoError(r.T(), err)
+	assert.NotEmpty(r.T(), singleList)
+	assert.Equal(r.T(), 2, total)
+
+	// Confirm no error on not found rpm name
+	singleList, total, err = r.tangy.RpmRepositoryVersionModuleStreamsList(context.Background(), []string{*firstVersionHref}, tangy.ModuleStreamListFilters{RpmNames: []string{"banana"}}, tangy.PageOptions{})
+	require.NoError(r.T(), err)
+	assert.Empty(r.T(), singleList)
+	assert.Equal(r.T(), 0, total)
 }
 
 func (r *RpmSuite) TestRpmRepositoryVersionPackageListNameFilter() {

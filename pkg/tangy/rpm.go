@@ -47,6 +47,11 @@ type RpmListItem struct {
 	Summary string // The summary of the rpm
 }
 
+type ModuleStreams struct {
+	ModuleName string   `json:"module_name"` // Name of the module
+	Streams    []string `json:"streams"`     // Module stream versions
+}
+
 type ErrataListItem struct {
 	Id              string
 	ErrataId        string
@@ -68,6 +73,11 @@ type PageOptions struct {
 
 type RpmListFilters struct {
 	Name string
+}
+
+type ModuleStreamListFilters struct {
+	RpmNames []string
+	Search   string
 }
 
 type ErrataListFilters struct {
@@ -351,6 +361,92 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 		return nil, 0, err
 	}
 	return errata, countTotal, nil
+}
+
+// RpmRepositoryVersionModuleStreamsList List Modules streams within a repository version, with pagination, search and an optional name filter
+func (t *tangyImpl) RpmRepositoryVersionModuleStreamsList(ctx context.Context, hrefs []string, filterOpts ModuleStreamListFilters, pageOpts PageOptions) ([]ModuleStreams, int, error) {
+	if len(hrefs) == 0 {
+		return []ModuleStreams{}, 0, nil
+	}
+
+	conn, err := t.pool.Acquire(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer conn.Release()
+
+	if pageOpts.Limit == 0 {
+		pageOpts.Limit = DefaultLimit
+	}
+
+	repoVerMap, err := parseRepositoryVersionHrefsMap(hrefs)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error parsing repository version hrefs: %w", err)
+	}
+
+	orderBy := ""
+
+	switch true {
+	case strings.Contains(pageOpts.SortBy, "streams"):
+		orderBy = "streams"
+	default:
+		orderBy = "module_name"
+	}
+
+	if strings.Contains(pageOpts.SortBy, "desc") {
+		orderBy += " DESC"
+	} else {
+		orderBy += " ASC"
+	}
+
+	args := pgx.NamedArgs{
+		"nameFilter": "%" + filterOpts.Search + "%",
+		"limit":      pageOpts.Limit,
+		"offset":     pageOpts.Offset,
+		"rpm_names":  filterOpts.RpmNames,
+	}
+
+	countQueryOpen := `SELECT COUNT(*) FROM (Select distinct(rp.name) FROM rpm_modulemd rp 
+	INNER JOIN rpm_modulemd_packages rmp on rmp.modulemd_id = rp.content_ptr_id
+	INNER JOIN rpm_package pack on pack.content_ptr_id = rmp.package_id `
+	innerUnion := contentIdsInVersions(repoVerMap, &args)
+
+	rpmNameFilter := ""
+
+	if len(filterOpts.RpmNames) > 0 {
+		rpmNameFilter = " AND pack.name = ANY(@rpm_names)"
+	}
+
+	filter := rpmNameFilter + " AND rp.name ILIKE CONCAT( '%', @nameFilter::text, '%') GROUP BY rp.name"
+
+	var countTotal int
+
+	err = conn.QueryRow(ctx, countQueryOpen+innerUnion+filter+") as list", args).Scan(&countTotal)
+
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return []ModuleStreams{}, 0, nil
+		}
+		return nil, 0, err
+	}
+
+	query := `SELECT rp.name as module_name, ARRAY_AGG(distinct rp.stream) as streams FROM rpm_modulemd rp 
+	INNER JOIN rpm_modulemd_packages rmp on rmp.modulemd_id = rp.content_ptr_id
+	INNER JOIN rpm_package pack on pack.content_ptr_id = rmp.package_id `
+
+	rows, err := conn.Query(ctx, query+innerUnion+filter+" ORDER BY "+orderBy+" LIMIT @limit OFFSET @offset", args)
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	moduleStreams, err := pgx.CollectRows(rows, pgx.RowToStructByName[ModuleStreams])
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return moduleStreams, countTotal, nil
 }
 
 // RpmRepositoryVersionPackageList List RPMs within a repository version, with pagination, and an optional name filter
