@@ -365,7 +365,6 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 
 // RpmRepositoryVersionModuleStreamsList List Modules streams within a repository version, with pagination, search and an optional name filter
 func (t *tangyImpl) RpmRepositoryVersionModuleStreamsList(ctx context.Context, hrefs []string, filterOpts ModuleStreamListFilters, pageOpts PageOptions) ([]ModuleStreams, int, error) {
-
 	if len(hrefs) == 0 {
 		return []ModuleStreams{}, 0, nil
 	}
