@@ -47,6 +47,16 @@ type RpmListItem struct {
 	Summary string // The summary of the rpm
 }
 
+type ModuleStreams struct {
+	Name        string              // Name of the module
+	Stream      string              // Module stream version
+	Version     string              // The version of the rpm
+	Context     string              // Context of the module
+	Arch        string              // The Architecture of the rpm
+	Description string              // Module description
+	Profiles    map[string][]string // Module profile data
+}
+
 type ErrataListItem struct {
 	Id              string
 	ErrataId        string
@@ -68,6 +78,11 @@ type PageOptions struct {
 
 type RpmListFilters struct {
 	Name string
+}
+
+type ModuleStreamListFilters struct {
+	RpmNames []string
+	Search   string
 }
 
 type ErrataListFilters struct {
@@ -351,6 +366,66 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 		return nil, 0, err
 	}
 	return errata, countTotal, nil
+}
+
+// RpmRepositoryVersionModuleStreamsList List Modules streams within a repository version, with pagination, search and an optional name filter
+func (t *tangyImpl) RpmRepositoryVersionModuleStreamsList(ctx context.Context, hrefs []string, filterOpts ModuleStreamListFilters, sortBy string) ([]ModuleStreams, error) {
+	if len(hrefs) == 0 {
+		return []ModuleStreams{}, nil
+	}
+
+	conn, err := t.pool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	repoVerMap, err := parseRepositoryVersionHrefsMap(hrefs)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing repository version hrefs: %w", err)
+	}
+
+	orderBy := "rp.name"
+
+	if strings.Contains(strings.ToLower(sortBy), "desc") {
+		orderBy += " DESC"
+	} else {
+		orderBy += " ASC"
+	}
+
+	orderBy += ", rp.stream, rp.version"
+
+	args := pgx.NamedArgs{
+		"nameFilter": "%" + filterOpts.Search + "%",
+		"rpm_names":  filterOpts.RpmNames,
+	}
+	query := `Select distinct on (rp.name, rp.stream) rp.name, rp.stream, rp.version, rp.profiles, rp.context, rp.arch, rp.description FROM rpm_modulemd rp 
+	INNER JOIN rpm_modulemd_packages rmp on rmp.modulemd_id = rp.content_ptr_id
+	INNER JOIN rpm_package pack on pack.content_ptr_id = rmp.package_id `
+
+	innerUnion := contentIdsInVersions(repoVerMap, &args)
+
+	rpmNameFilter := ""
+
+	if len(filterOpts.RpmNames) > 0 {
+		rpmNameFilter = " AND pack.name = ANY(@rpm_names)"
+	}
+
+	filter := rpmNameFilter + " AND rp.name ILIKE CONCAT( '%', @nameFilter::text, '%') "
+
+	rows, err := conn.Query(ctx, query+innerUnion+filter+" ORDER BY "+orderBy+" LIMIT 5000", args)
+
+	if err != nil {
+		return nil, err
+	}
+
+	moduleStreams, err := pgx.CollectRows(rows, pgx.RowToStructByName[ModuleStreams])
+
+	if err != nil {
+		return nil, err
+	}
+
+	return moduleStreams, nil
 }
 
 // RpmRepositoryVersionPackageList List RPMs within a repository version, with pagination, and an optional name filter
