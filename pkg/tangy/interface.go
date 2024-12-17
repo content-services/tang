@@ -50,12 +50,12 @@ type tangyImpl struct {
 	logger Logger
 }
 
-//go:generate mockery --name Tangy --filename tangy_mock.go --inpackage
 type Tangy interface {
 	RpmRepositoryVersionPackageSearch(ctx context.Context, hrefs []string, search string, limit int) ([]RpmPackageSearch, error)
 	RpmRepositoryVersionPackageGroupSearch(ctx context.Context, hrefs []string, search string, limit int) ([]RpmPackageGroupSearch, error)
 	RpmRepositoryVersionEnvironmentSearch(ctx context.Context, hrefs []string, search string, limit int) ([]RpmEnvironmentSearch, error)
 	RpmRepositoryVersionPackageList(ctx context.Context, hrefs []string, filterOpts RpmListFilters, pageOpts PageOptions) ([]RpmListItem, int, error)
+	RpmRepositoryVersionModuleStreamsList(ctx context.Context, hrefs []string, filterOpts ModuleStreamListFilters, sortBy string) ([]ModuleStreams, error)
 	RpmRepositoryVersionErrataList(ctx context.Context, hrefs []string, filterOpts ErrataListFilters, pageOpts PageOptions) ([]ErrataListItem, int, error)
 	Close()
 }
