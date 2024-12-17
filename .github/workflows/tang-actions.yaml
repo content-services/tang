@@ -4,10 +4,10 @@ on:
     branches:
       - main
     paths-ignore:
-      - '**.md'
+      - "**.md"
   pull_request:
     paths-ignore:
-      - '**.md'
+      - "**.md"
 jobs:
   golangci:
     name: Lint
@@ -44,11 +44,15 @@ jobs:
         with:
           go-version: "1.22"
       - name: start pulp
-        uses: isbang/compose-action@v2.0.1
+        uses: isbang/compose-action@v2.0.2
         with:
           compose-file: docker-compose.yml
           cwd: ./compose_files/pulp/
           down-flags: --volumes
+        env:
+          PULP_DATABASE_PORT: 5434
+          PULP_API_PORT: 8087
+          PULP_CONTENT_PORT: 8088
       - name: Wait for pulp
         run: |
           docker run --network=host --rm -v ${PWD}:/local curlimages/curl  \

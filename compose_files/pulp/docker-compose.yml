@@ -1,15 +1,14 @@
-version: '3'
 services:
   postgres:
-    image: "docker.io/library/postgres:13"
+    image: "docker.io/library/postgres:16"
     ports:
-      - "5434:5432"
+      - "${PULP_DATABASE_PORT:-5432}:5432"
     environment:
       POSTGRES_USER: pulp
       POSTGRES_PASSWORD: password
       POSTGRES_DB: pulp
-      POSTGRES_INITDB_ARGS: '--auth-host=scram-sha-256'
-      POSTGRES_HOST_AUTH_METHOD: 'scram-sha-256'
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+      POSTGRES_HOST_AUTH_METHOD: "scram-sha-256"
     volumes:
       - "pg_data:/var/lib/postgresql"
       - "./assets/postgres/passwd:/etc/passwd:Z"
@@ -22,6 +21,7 @@ services:
 
   migration_service:
     image: "quay.io/redhat-services-prod/pulp-services-tenant/pulp:latest"
+    platform: linux/amd64
     depends_on:
       postgres:
         condition: service_healthy
@@ -30,10 +30,11 @@ services:
     volumes:
       - "./assets/settings.py:/etc/pulp/settings.py:z"
       - "./assets/certs:/etc/pulp/certs:z"
-      - "pulp:/var/lib/pulp"      
+      - "pulp:/var/lib/pulp"
 
   set_init_password_service:
-    image:  "quay.io/redhat-services-prod/pulp-services-tenant/pulp:latest"
+    image: "quay.io/redhat-services-prod/pulp-services-tenant/pulp:latest"
+    platform: linux/amd64
     command: set_init_password.sh
     depends_on:
       migration_service:
@@ -51,16 +52,19 @@ services:
       - "redis_data:/data"
     restart: always
     healthcheck:
-      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
 
   pulp_api:
     image: "quay.io/redhat-services-prod/pulp-services-tenant/pulp:latest"
+    platform: linux/amd64
     deploy:
       replicas: 1
-    command: [ 'pulp-api' ]
+    command: ["pulp-api"]
     depends_on:
       migration_service:
         condition: service_completed_successfully
+    ports:
+      - ${PULP_API_PORT:-8080}:24817
     hostname: pulp-api
     user: pulp
     volumes:
@@ -73,16 +77,21 @@ services:
       PULP_ADMIN_PASSWORD: password
       PULP_DOMAIN_ENABLED: "true"
       PULP_API_ROOT: /api/pulp/
+      PULP_CONTENT_ORIGIN: "http://pulp.content:8081/"
+      PULP_CONTENT_PATH_PREFIX: "/pulp/content/"
     restart: always
 
   pulp_content:
     image: "quay.io/redhat-services-prod/pulp-services-tenant/pulp:latest"
+    platform: linux/amd64
     deploy:
       replicas: 1
-    command: [ 'pulp-content' ]
+    command: ["pulp-content"]
     depends_on:
       migration_service:
         condition: service_completed_successfully
+    ports:
+      - ${PULP_CONTENT_PORT:-8081}:24816
     hostname: pulp-content
     user: pulp
     volumes:
@@ -94,28 +103,16 @@ services:
       POSTGRES_SERVICE_HOST: postgres
       PULP_DOMAIN_ENABLED: "true"
       PULP_API_ROOT: /api/pulp/
-    restart: always
-
-  pulp_web:
-    image: "pulp/pulp-web:latest"
-    command: [ '/usr/bin/nginx.sh' ]
-    depends_on:
-      migration_service:
-        condition: service_completed_successfully
-    ports:
-      - "8087:8080"
-    hostname: pulp
-    user: root
-    volumes:
-      - "./assets/bin/nginx.sh:/usr/bin/nginx.sh:Z"
-      - "./assets/nginx/nginx.conf.template:/etc/opt/rh/rh-nginx116/nginx/nginx.conf.template:Z"
+      PULP_CONTENT_ORIGIN: "http://pulp.content:8081/"
+      PULP_CONTENT_PATH_PREFIX: "/pulp/content/"
     restart: always
 
   pulp_worker:
     image: "quay.io/redhat-services-prod/pulp-services-tenant/pulp:latest"
+    platform: linux/amd64
     deploy:
-      replicas: 1
-    command: [ 'pulp-worker' ]
+      replicas: 2
+    command: ["pulp-worker"]
     depends_on:
       migration_service:
         condition: service_completed_successfully
@@ -130,6 +127,9 @@ services:
       POSTGRES_SERVICE_PORT: 5432
       POSTGRES_SERVICE_HOST: postgres
       PULP_DOMAIN_ENABLED: "true"
+      PULP_API_ROOT: /api/pulp/
+      PULP_CONTENT_ORIGIN: "http://pulp.content:8081/"
+      PULP_CONTENT_PATH_PREFIX: "/pulp/content/"
     restart: always
 volumes:
   pulp:
