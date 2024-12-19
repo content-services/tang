@@ -22,3 +22,4 @@ include mk/variables.mk
 include mk/compose.mk
 include mk/help.mk
 include mk/test.mk
+include mk/mockery.mk
