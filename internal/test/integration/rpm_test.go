@@ -27,12 +27,10 @@ type RpmSuite struct {
 }
 
 const testRepoName = "zoo"
-const testRepoURL = "https://rverdile.fedorapeople.org/dummy-repos/comps/repo1/"
-const testRepoURLTwo = "https://rverdile.fedorapeople.org/dummy-repos/comps/repo2/"
+const testRepoURL = "https://content-services.github.io/fixtures/yum/comps-modules/v1/"
+const testRepoURLTwo = "https://content-services.github.io/fixtures/yum/comps-modules/v2/"
 const testRepoNameWithErrata = "multiple-errata"
 const testRepoURLWithErrata = "https://stephenw.fedorapeople.org/fakerepos/multiple_errata/"
-const rpmNameWithModule = "rpm-with-modules"
-const rpmUrlWithModule = "https://fixtures.pulpproject.org/rpm-with-modules-modified/"
 
 func (r *RpmSuite) CreateTestRepository(t *testing.T, repoName string, repoUrl string) {
 	_, err := r.client.LookupOrCreateDomain(r.domainName)
@@ -160,7 +158,7 @@ func (r *RpmSuite) TestRpmRepositoryVersionPackageGroupSearch() {
 	assert.Equal(r.T(), search[0].Name, "birds")
 	assert.Equal(r.T(), search[0].ID, "birds")
 	assert.Equal(r.T(), search[0].Description, "birds")
-	assert.ElementsMatch(r.T(), search[0].Packages, []string{"cockateel", "penguin", "stork"})
+	assert.ElementsMatch(r.T(), search[0].Packages, []string{"cockateel", "penguin", "stork", "duck"})
 	search, err = r.tangy.RpmRepositoryVersionPackageGroupSearch(context.Background(), []string{*firstVersionHref}, "mamm", 100)
 	assert.NoError(r.T(), err)
 	assert.Empty(r.T(), search)
@@ -169,7 +167,7 @@ func (r *RpmSuite) TestRpmRepositoryVersionPackageGroupSearch() {
 	search, err = r.tangy.RpmRepositoryVersionPackageGroupSearch(context.Background(), []string{*secondVersionHref}, "bir", 100)
 	assert.NoError(r.T(), err)
 	assert.Equal(r.T(), search[0].Name, "birds")
-	assert.ElementsMatch(r.T(), search[0].Packages, []string{"cockateel", "penguin"})
+	assert.ElementsMatch(r.T(), search[0].Packages, []string{"cockateel", "penguin", "duck"})
 	search, err = r.tangy.RpmRepositoryVersionPackageGroupSearch(context.Background(), []string{*secondVersionHref}, "mamm", 100)
 	assert.NoError(r.T(), err)
 	assert.ElementsMatch(r.T(), search[0].Packages, []string{"bear", "cat"})
@@ -178,7 +176,7 @@ func (r *RpmSuite) TestRpmRepositoryVersionPackageGroupSearch() {
 	search, err = r.tangy.RpmRepositoryVersionPackageGroupSearch(context.Background(), []string{*firstVersionHref}, "bir", 100)
 	assert.NoError(r.T(), err)
 	assert.Equal(r.T(), search[0].Name, "birds")
-	assert.ElementsMatch(r.T(), search[0].Packages, []string{"cockateel", "penguin", "stork"})
+	assert.ElementsMatch(r.T(), search[0].Packages, []string{"cockateel", "penguin", "stork", "duck"})
 	search, err = r.tangy.RpmRepositoryVersionPackageGroupSearch(context.Background(), []string{*firstVersionHref}, "mamm", 100)
 	assert.NoError(r.T(), err)
 	assert.Empty(r.T(), search)
@@ -186,7 +184,7 @@ func (r *RpmSuite) TestRpmRepositoryVersionPackageGroupSearch() {
 	// Search both versions
 	search, err = r.tangy.RpmRepositoryVersionPackageGroupSearch(context.Background(), []string{*firstVersionHref, *secondVersionHref}, "s", 100)
 	assert.NoError(r.T(), err)
-	assert.ElementsMatch(r.T(), search[0].Packages, []string{"cockateel", "penguin", "stork"})
+	assert.ElementsMatch(r.T(), search[0].Packages, []string{"cockateel", "penguin", "stork", "duck"})
 	assert.ElementsMatch(r.T(), search[1].Packages, []string{"bear", "cat"})
 
 	// Test search limit
@@ -375,22 +373,8 @@ func (r *RpmSuite) TestRpmRepositoryVersionErrataListSort() {
 }
 
 func (r *RpmSuite) TestRpmRepositoryVersionModuleStreamsList() {
-	resp, err := r.client.GetRpmRepositoryByName(r.domainName, testRepoName)
-	require.NoError(r.T(), err)
-	firstVersionHref := resp.LatestVersionHref
-	require.NotNil(r.T(), firstVersionHref)
-
-	// expect empty
-	emptyList, err := r.tangy.RpmRepositoryVersionModuleStreamsList(context.Background(), []string{*firstVersionHref}, tangy.ModuleStreamListFilters{}, "name ASC")
-	require.NoError(r.T(), err)
-	assert.Empty(r.T(), emptyList)
-
-	r.CreateTestRepository(r.T(), rpmNameWithModule, rpmUrlWithModule)
-	resp, err = r.client.GetRpmRepositoryByName(r.domainName, rpmNameWithModule)
-
-	require.NoError(r.T(), err)
-	require.NotNil(r.T(), resp.LatestVersionHref)
-	firstVersionHref = resp.LatestVersionHref
+	firstVersionHref := &r.firstVersionHref
+	secondVersionHref := &r.secondVersionHref
 
 	// Expect populated
 	singleList, err := r.tangy.RpmRepositoryVersionModuleStreamsList(context.Background(), []string{*firstVersionHref}, tangy.ModuleStreamListFilters{}, "anything!")
@@ -404,13 +388,13 @@ func (r *RpmSuite) TestRpmRepositoryVersionModuleStreamsList() {
 	require.NoError(r.T(), err)
 	assert.NotEmpty(r.T(), singleList)
 
-	// Test package name list filter
+	// Test module name list filter
 	singleList, err = r.tangy.RpmRepositoryVersionModuleStreamsList(context.Background(), []string{*firstVersionHref}, tangy.ModuleStreamListFilters{RpmNames: []string{"walrus", "kangaroo"}}, "anything DesC")
 	require.NoError(r.T(), err)
 	assert.Equal(r.T(), singleList[0].Name, "walrus")
 	assert.NotEmpty(r.T(), singleList)
 
-	// Test package name list filter
+	// Test module name list filter
 	singleList, err = r.tangy.RpmRepositoryVersionModuleStreamsList(context.Background(), []string{*firstVersionHref}, tangy.ModuleStreamListFilters{RpmNames: []string{"walrus", "kangaroo"}}, "name ASC")
 	require.NoError(r.T(), err)
 	assert.Equal(r.T(), singleList[0].Name, "kangaroo")
@@ -420,34 +404,40 @@ func (r *RpmSuite) TestRpmRepositoryVersionModuleStreamsList() {
 	singleList, err = r.tangy.RpmRepositoryVersionModuleStreamsList(context.Background(), []string{*firstVersionHref}, tangy.ModuleStreamListFilters{RpmNames: []string{"banana"}}, "")
 	require.NoError(r.T(), err)
 	assert.Empty(r.T(), singleList)
+
+	// Test no duplicated module names
+	singleList, err = r.tangy.RpmRepositoryVersionModuleStreamsList(context.Background(), []string{*firstVersionHref, *secondVersionHref}, tangy.ModuleStreamListFilters{RpmNames: []string{"walrus", "kangaroo"}}, "name DESC")
+	require.NoError(r.T(), err)
+	assert.Equal(r.T(), singleList[0].Name, "walrus")
+	assert.Len(r.T(), singleList, 3)
 }
 
 func (r *RpmSuite) TestRpmRepositoryVersionPackageListNameFilter() {
 	resp, err := r.client.GetRpmRepositoryByName(r.domainName, testRepoName)
 	require.NoError(r.T(), err)
-	firstVersionHref := resp.LatestVersionHref
-	require.NotNil(r.T(), firstVersionHref)
+	latestVersionHref := resp.LatestVersionHref
+	require.NotNil(r.T(), latestVersionHref)
 
 	// no filter
-	singleList, total, err := r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{*firstVersionHref}, tangy.RpmListFilters{Name: ""}, tangy.PageOptions{})
+	singleList, total, err := r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{*latestVersionHref}, tangy.RpmListFilters{Name: ""}, tangy.PageOptions{})
 	require.NoError(r.T(), err)
 	assert.NotEmpty(r.T(), singleList)
-	assert.Equal(r.T(), total, 4)
+	assert.Equal(r.T(), 9, total)
 
 	// exact match
-	singleList, total, err = r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{*firstVersionHref}, tangy.RpmListFilters{Name: "bear"}, tangy.PageOptions{})
+	singleList, total, err = r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{*latestVersionHref}, tangy.RpmListFilters{Name: "bear"}, tangy.PageOptions{})
 	require.NoError(r.T(), err)
 	assert.NotEmpty(r.T(), singleList)
 	assert.Equal(r.T(), total, 1)
 
 	// partial match
-	singleList, total, err = r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{*firstVersionHref}, tangy.RpmListFilters{Name: "bea"}, tangy.PageOptions{})
+	singleList, total, err = r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{*latestVersionHref}, tangy.RpmListFilters{Name: "bea"}, tangy.PageOptions{})
 	require.NoError(r.T(), err)
 	assert.NotEmpty(r.T(), singleList)
 	assert.Equal(r.T(), total, 1)
 
 	// no match
-	singleList, total, err = r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{*firstVersionHref}, tangy.RpmListFilters{Name: "wal"}, tangy.PageOptions{})
+	singleList, total, err = r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{*latestVersionHref}, tangy.RpmListFilters{Name: "bat"}, tangy.PageOptions{})
 	require.NoError(r.T(), err)
 	assert.Empty(r.T(), singleList)
 	assert.Equal(r.T(), total, 0)
@@ -461,12 +451,12 @@ func (r *RpmSuite) TestRpmRepositoryVersionPackageListNoDuplicates() {
 	doubleList, total, err := r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{firstVersionHref, secondVersionHref}, tangy.RpmListFilters{}, tangy.PageOptions{})
 	require.NoError(r.T(), err)
 	assert.NotEmpty(r.T(), doubleList)
-	assert.Equal(r.T(), total, 5)
+	assert.Equal(r.T(), 12, total)
 
 	singleList, total, err := r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{firstVersionHref}, tangy.RpmListFilters{}, tangy.PageOptions{})
 	require.NoError(r.T(), err)
 	assert.NotEmpty(r.T(), singleList)
-	assert.Equal(r.T(), total, 3)
+	assert.Equal(r.T(), 7, total)
 }
 
 func (r *RpmSuite) TestRpmRepositoryVersionPackageListOffsetLimit() {
@@ -477,19 +467,19 @@ func (r *RpmSuite) TestRpmRepositoryVersionPackageListOffsetLimit() {
 	require.NoError(r.T(), err)
 	assert.NotEmpty(r.T(), list)
 	assert.Equal(r.T(), 4, len(list))
-	assert.Equal(r.T(), 5, total)
+	assert.Equal(r.T(), 12, total)
 
 	list, total, err = r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{firstVersionHref, secondVersionHref}, tangy.RpmListFilters{}, tangy.PageOptions{Offset: 4, Limit: 1})
 	require.NoError(r.T(), err)
 	assert.NotEmpty(r.T(), list)
 	assert.Equal(r.T(), 1, len(list))
-	assert.Equal(r.T(), 5, total)
+	assert.Equal(r.T(), 12, total)
 
 	list, total, err = r.tangy.RpmRepositoryVersionPackageList(context.Background(), []string{firstVersionHref, secondVersionHref}, tangy.RpmListFilters{}, tangy.PageOptions{Offset: 100, Limit: 100})
 	require.NoError(r.T(), err)
 	assert.Empty(r.T(), list)
 	assert.Equal(r.T(), 0, len(list))
-	assert.Equal(r.T(), 5, total)
+	assert.Equal(r.T(), 12, total)
 }
 
 func RandStringBytes(n int) string {
