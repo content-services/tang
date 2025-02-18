@@ -23,3 +23,4 @@ include mk/compose.mk
 include mk/help.mk
 include mk/test.mk
 include mk/mockery.mk
+include mk/lint.mk
