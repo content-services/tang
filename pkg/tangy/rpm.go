@@ -118,7 +118,7 @@ func (t *tangyImpl) RpmRepositoryVersionPackageSearch(ctx context.Context, hrefs
 	query := `SELECT DISTINCT ON (rp.name) rp.name, rp.summary
               FROM rpm_package rp `
 
-	rows, err := conn.Query(context.Background(), query+innerUnion+" AND rp.name ILIKE CONCAT( '%', @nameFilter::text, '%') ORDER BY rp.name  LIMIT @limit", args)
+	rows, err := conn.Query(context.Background(), query+innerUnion+" AND rp.name ILIKE CONCAT( @nameFilter::text, '%') ORDER BY rp.name  LIMIT @limit", args)
 	if err != nil {
 		return nil, err
 	}
@@ -450,11 +450,11 @@ func (t *tangyImpl) RpmRepositoryVersionPackageList(ctx context.Context, hrefs [
 	}
 
 	countQueryOpen := "select count(distinct(rp.content_ptr_id)) as total FROM rpm_package rp "
-	args := pgx.NamedArgs{"nameFilter": "%" + filterOpts.Name + "%"}
+	args := pgx.NamedArgs{"nameFilter": filterOpts.Name + "%"}
 	innerUnion := contentIdsInVersions(repoVerMap, &args)
 
 	var countTotal int
-	err = conn.QueryRow(ctx, countQueryOpen+innerUnion+" AND rp.name ILIKE CONCAT( '%', @nameFilter::text, '%')", args).Scan(&countTotal)
+	err = conn.QueryRow(ctx, countQueryOpen+innerUnion+" AND rp.name ILIKE CONCAT( @nameFilter::text, '%')", args).Scan(&countTotal)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -465,7 +465,7 @@ func (t *tangyImpl) RpmRepositoryVersionPackageList(ctx context.Context, hrefs [
 	args["limit"] = pageOpts.Limit
 	args["offset"] = pageOpts.Offset
 	rows, err := conn.Query(ctx, queryOpen+innerUnion+
-		" AND rp.name ILIKE CONCAT( '%', @nameFilter::text, '%') ORDER BY rp.name ASC, rp.version ASC, rp.release ASC, rp.arch ASC LIMIT @limit OFFSET @offset",
+		" AND rp.name ILIKE CONCAT( @nameFilter::text, '%') ORDER BY rp.name ASC, rp.version ASC, rp.release ASC, rp.arch ASC LIMIT @limit OFFSET @offset",
 		args)
 	if err != nil {
 		return nil, 0, err
