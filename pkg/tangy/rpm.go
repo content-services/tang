@@ -112,7 +112,7 @@ func (t *tangyImpl) RpmRepositoryVersionPackageSearch(ctx context.Context, hrefs
 		return []RpmPackageSearch{}, fmt.Errorf("error parsing repository version hrefs: %w", err)
 	}
 
-	args := pgx.NamedArgs{"nameFilter": "%" + search + "%", "limit": limit}
+	args := pgx.NamedArgs{"nameFilter": search + "%", "limit": limit}
 	innerUnion := contentIdsInVersions(repoVerMap, &args)
 
 	query := `SELECT DISTINCT ON (rp.name) rp.name, rp.summary

@@ -106,6 +106,9 @@ func (r *RpmSuite) TestRpmRepositoryVersionPackageSearch() {
 	search, err := r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*firstVersionHref}, "peng", 100)
 	assert.NoError(r.T(), err)
 	assert.Equal(r.T(), search[0].Name, "penguin")
+	search, err = r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*firstVersionHref}, "enguin", 100)
+	assert.NoError(r.T(), err)
+	assert.Len(r.T(), search, 0)
 	search, err = r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*firstVersionHref}, "bea", 100)
 	assert.NoError(r.T(), err)
 	assert.Empty(r.T(), search)
@@ -130,15 +133,12 @@ func (r *RpmSuite) TestRpmRepositoryVersionPackageSearch() {
 	assert.Empty(r.T(), search)
 
 	// Search both versions
-	search, err = r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*firstVersionHref, *secondVersionHref}, "e", 100)
+	search, err = r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*firstVersionHref, *secondVersionHref}, "", 100)
 	assert.NoError(r.T(), err)
-	assert.Len(r.T(), search, 3)
-	assert.Equal(r.T(), "bear", search[0].Name)
-	assert.Equal(r.T(), "cockateel", search[1].Name)
-	assert.Equal(r.T(), "penguin", search[2].Name)
+	assert.Len(r.T(), search, 8)
 
 	// Test search limit
-	search, err = r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*secondVersionHref}, "a", 1)
+	search, err = r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*secondVersionHref}, "c", 1)
 	assert.NoError(r.T(), err)
 	assert.Len(r.T(), search, 1)
 
@@ -182,7 +182,7 @@ func (r *RpmSuite) TestRpmRepositoryVersionPackageGroupSearch() {
 	assert.Empty(r.T(), search)
 
 	// Search both versions
-	search, err = r.tangy.RpmRepositoryVersionPackageGroupSearch(context.Background(), []string{*firstVersionHref, *secondVersionHref}, "s", 100)
+	search, err = r.tangy.RpmRepositoryVersionPackageGroupSearch(context.Background(), []string{*firstVersionHref, *secondVersionHref}, "", 100)
 	assert.NoError(r.T(), err)
 	assert.ElementsMatch(r.T(), search[0].Packages, []string{"cockateel", "penguin", "stork", "duck"})
 	assert.ElementsMatch(r.T(), search[1].Packages, []string{"bear", "cat"})
