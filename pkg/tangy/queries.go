@@ -18,11 +18,11 @@ func contentIdsInVersion(repoId string, versionNum int, namedArgs *pgx.NamedArgs
 	repoIdName := fmt.Sprintf("%v%v", "repoName", ran)
 	versionNumName := fmt.Sprintf("%v%v", "versionNum", ran)
 	query := `
-                (crv.repository_id = @%v AND crv.number <= @%v AND NOT (crv2.number <= @%v AND crv2.number IS NOT NULL))
+                (crv.repository_id = @%v AND crv.number = @%v AND crv.content_ids IS NOT NULL)
 	`
 	(*namedArgs)[repoIdName] = repoId
 	(*namedArgs)[versionNumName] = versionNum
-	return fmt.Sprintf(query, repoIdName, versionNumName, versionNumName)
+	return fmt.Sprintf(query, repoIdName, versionNumName)
 }
 
 // returns part of a query that joins a table to the needed tables to select content units in a given set of versions
@@ -32,9 +32,7 @@ func contentIdsInVersion(repoId string, versionNum int, namedArgs *pgx.NamedArgs
 //		Takes in a pointer to Named args in order to add required named arguments for the query.
 func contentIdsInVersions(repoVerMap []ParsedRepoVersion, namedArgs *pgx.NamedArgs) string {
 	mainQuery := ` 				
-                INNER JOIN core_repositorycontent crc on rp.content_ptr_id = crc.content_id
-                INNER JOIN core_repositoryversion crv ON (crc.version_added_id = crv.pulp_id)
-                LEFT OUTER JOIN core_repositoryversion crv2 ON (crc.version_removed_id = crv2.pulp_id)
+                INNER JOIN core_repositoryversion crv ON (rp.content_ptr_id = ANY(crv.content_ids))
                 WHERE
                     `
 	queries := []string{}
