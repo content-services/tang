@@ -1,8 +1,8 @@
 module github.com/content-services/tang
 
-go 1.22.0
+go 1.24
 
-toolchain go1.22.4
+toolchain go1.24.0
 
 require (
 	github.com/content-services/zest/release/v2024 v2024.11.1731697894
