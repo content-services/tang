@@ -1,6 +1,6 @@
-# Configuration for golangci-lint. See https://golangci-lint.run/usage/configuration/.
+# Configuration for golangci-lint v2. See https://golangci-lint.run/usage/configuration/.
 linters:
-  disable-all: false # use default linters
+  default: standard
   enable:
     - gofmt
     - whitespace
