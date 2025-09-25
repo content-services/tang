@@ -67,7 +67,11 @@ func (r *RpmZest) LookupOrCreateDomain(name string) (string, error) {
 	domain = *zest.NewDomain(name, localStorage, emptyConfig)
 	domainResp, resp, err := r.client.DomainsAPI.DomainsCreate(r.ctx, DefaultDomain).Domain(domain).Execute()
 	if resp != nil && resp.Body != nil {
-		defer resp.Body.Close()
+		defer func() {
+			if closeErr := resp.Body.Close(); closeErr != nil {
+				// Log or handle close error if needed
+			}
+		}()
 	}
 	if err != nil {
 		return "", err
@@ -80,12 +84,16 @@ func (r *RpmZest) LookupDomain(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			// Log or handle close error if needed
+		}
+	}()
 
 	if len(list.Results) == 0 {
 		return "", nil
 	} else if list.Results[0].PulpHref == nil {
-		return "", fmt.Errorf("Unexpectedly got a nil href for domain %v", name)
+		return "", fmt.Errorf("unexpectedly got a nil href for domain %v", name)
 	} else {
 		return *list.Results[0].PulpHref, nil
 	}
@@ -99,7 +107,11 @@ func (r *RpmZest) CreateRepository(domain, name, url string) (repoHref string, r
 	if err != nil {
 		return "", "", err
 	}
-	defer httpResp.Body.Close()
+	defer func() {
+		if closeErr := httpResp.Body.Close(); closeErr != nil {
+			// Log or handle close error if needed
+		}
+	}()
 
 	rpmRpmRepository := *zest.NewRpmRpmRepository(name)
 	if remoteResponse.PulpHref != nil {
@@ -111,7 +123,11 @@ func (r *RpmZest) CreateRepository(domain, name, url string) (repoHref string, r
 	if err != nil {
 		return "", "", err
 	}
-	defer httpResp.Body.Close()
+	defer func() {
+		if closeErr := httpResp.Body.Close(); closeErr != nil {
+			// Log or handle close error if needed
+		}
+	}()
 
 	return *resp.PulpHref, *remoteResponse.PulpHref, nil
 }
@@ -119,7 +135,11 @@ func (r *RpmZest) CreateRepository(domain, name, url string) (repoHref string, r
 func (r *RpmZest) UpdateRemote(remoteHref string, url string) error {
 	_, httpResp, err := r.client.RemotesRpmAPI.RemotesRpmRpmPartialUpdate(r.ctx, remoteHref).PatchedrpmRpmRemote(zest.PatchedrpmRpmRemote{Url: &url}).Execute()
 	if httpResp != nil {
-		defer httpResp.Body.Close()
+		defer func() {
+			if closeErr := httpResp.Body.Close(); closeErr != nil {
+				// Log or handle close error if needed
+			}
+		}()
 	}
 	if err != nil {
 		return err
