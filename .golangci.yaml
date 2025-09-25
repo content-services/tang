@@ -1,14 +1,21 @@
-# Configuration for golangci-lint. See https://golangci-lint.run/usage/configuration/.
+# Configuration for golangci-lint v2. See https://golangci-lint.run/usage/configuration/.
+version: "2"
+
 linters:
-  disable-all: false # use default linters
+  default: standard
   enable:
-    - gofmt
     - whitespace
     - govet
     - misspell
     - forcetypeassert
-    - gci
     - bodyclose
-issues:
-  exclude:
-    - composite
+  exclusions:
+    rules:
+      - text: composite
+        linters:
+          - govet
+
+formatters:
+  enable:
+    - gofmt
+    - gci
