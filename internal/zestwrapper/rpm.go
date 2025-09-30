@@ -67,11 +67,7 @@ func (r *RpmZest) LookupOrCreateDomain(name string) (string, error) {
 	domain = *zest.NewDomain(name, localStorage, emptyConfig)
 	domainResp, resp, err := r.client.DomainsAPI.DomainsCreate(r.ctx, DefaultDomain).Domain(domain).Execute()
 	if resp != nil && resp.Body != nil {
-		defer func() {
-			if closeErr := resp.Body.Close(); closeErr != nil {
-				fmt.Printf("failed to close response body: %v\n", closeErr)
-			}
-		}()
+		defer resp.Body.Close()
 	}
 	if err != nil {
 		return "", err
@@ -84,11 +80,7 @@ func (r *RpmZest) LookupDomain(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer func() {
-		if closeErr := resp.Body.Close(); closeErr != nil {
-			fmt.Printf("failed to close response body: %v\n", closeErr)
-		}
-	}()
+	defer resp.Body.Close()
 
 	if len(list.Results) == 0 {
 		return "", nil
@@ -107,11 +99,7 @@ func (r *RpmZest) CreateRepository(domain, name, url string) (repoHref string, r
 	if err != nil {
 		return "", "", err
 	}
-	defer func() {
-		if closeErr := httpResp.Body.Close(); closeErr != nil {
-			fmt.Printf("failed to close response body: %v\n", closeErr)
-		}
-	}()
+	defer httpResp.Body.Close()
 
 	rpmRpmRepository := *zest.NewRpmRpmRepository(name)
 	if remoteResponse.PulpHref != nil {
@@ -123,11 +111,7 @@ func (r *RpmZest) CreateRepository(domain, name, url string) (repoHref string, r
 	if err != nil {
 		return "", "", err
 	}
-	defer func() {
-		if closeErr := httpResp.Body.Close(); closeErr != nil {
-			fmt.Printf("failed to close response body: %v\n", closeErr)
-		}
-	}()
+	defer httpResp.Body.Close()
 
 	return *resp.PulpHref, *remoteResponse.PulpHref, nil
 }
@@ -135,11 +119,7 @@ func (r *RpmZest) CreateRepository(domain, name, url string) (repoHref string, r
 func (r *RpmZest) UpdateRemote(remoteHref string, url string) error {
 	_, httpResp, err := r.client.RemotesRpmAPI.RemotesRpmRpmPartialUpdate(r.ctx, remoteHref).PatchedrpmRpmRemote(zest.PatchedrpmRpmRemote{Url: &url}).Execute()
 	if httpResp != nil {
-		defer func() {
-			if closeErr := httpResp.Body.Close(); closeErr != nil {
-				fmt.Printf("failed to close response body: %v\n", closeErr)
-			}
-		}()
+		defer httpResp.Body.Close()
 	}
 	if err != nil {
 		return err
@@ -154,11 +134,7 @@ func (r *RpmZest) SyncRpmRepository(rpmRpmRepositoryHref string, remoteHref stri
 
 	resp, httpResp, err := r.client.RepositoriesRpmAPI.RepositoriesRpmRpmSync(r.ctx, rpmRpmRepositoryHref).
 		RpmRepositorySyncURL(rpmRepositoryHref).Execute()
-	defer func() {
-		if closeErr := httpResp.Body.Close(); closeErr != nil {
-			fmt.Printf("failed to close response body: %v\n", closeErr)
-		}
-	}()
+	defer httpResp.Body.Close()
 	if err != nil {
 		return "", err
 	}
@@ -172,11 +148,7 @@ func (r *RpmZest) GetTask(taskHref string) (zest.TaskResponse, error) {
 	if err != nil {
 		return zest.TaskResponse{}, err
 	}
-	defer func() {
-		if closeErr := httpResp.Body.Close(); closeErr != nil {
-			fmt.Printf("failed to close response body: %v\n", closeErr)
-		}
-	}()
+	defer httpResp.Body.Close()
 
 	return *task, nil
 }
@@ -218,11 +190,7 @@ func (r *RpmZest) GetRpmRepositoryByName(domain, name string) (*zest.RpmRpmRepos
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if closeErr := httpResp.Body.Close(); closeErr != nil {
-			fmt.Printf("failed to close response body: %v\n", closeErr)
-		}
-	}()
+	defer httpResp.Body.Close()
 
 	results := resp.GetResults()
 	if len(results) > 0 {

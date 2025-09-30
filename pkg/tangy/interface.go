@@ -19,7 +19,7 @@ func New(dbConfig Database, logConfig Logger) (Tangy, error) {
 	if dbConfig.PoolLimit == 0 {
 		dbConfig.PoolLimit = DefaultMaxPoolLimit
 	}
-	pxConfig.MaxConns = int32(dbConfig.PoolLimit)
+	pxConfig.MaxConns = dbConfig.PoolLimit
 
 	if logConfig.Logger != nil && logConfig.Enabled {
 		zlog := zerologadapter.NewLogger(*logConfig.Logger)
