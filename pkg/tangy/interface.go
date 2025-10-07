@@ -3,6 +3,7 @@ package tangy
 import (
 	"context"
 	"fmt"
+	"math"
 
 	zerologadapter "github.com/jackc/pgx-zerolog"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -19,6 +20,13 @@ func New(dbConfig Database, logConfig Logger) (Tangy, error) {
 	if dbConfig.PoolLimit == 0 {
 		dbConfig.PoolLimit = DefaultMaxPoolLimit
 	}
+
+	// Validate pool limit is within 32-bit integer range
+	if dbConfig.PoolLimit < math.MinInt32 || dbConfig.PoolLimit > math.MaxInt32 {
+		return nil, fmt.Errorf("pool limit size is invalid: %d (must be between %d and %d)",
+			dbConfig.PoolLimit, math.MinInt32, math.MaxInt32)
+	}
+
 	pxConfig.MaxConns = int32(dbConfig.PoolLimit)
 
 	if logConfig.Logger != nil && logConfig.Enabled {

@@ -85,7 +85,7 @@ func (r *RpmZest) LookupDomain(name string) (string, error) {
 	if len(list.Results) == 0 {
 		return "", nil
 	} else if list.Results[0].PulpHref == nil {
-		return "", fmt.Errorf("Unexpectedly got a nil href for domain %v", name)
+		return "", fmt.Errorf("unexpectedly got a nil href for domain %v", name)
 	} else {
 		return *list.Results[0].PulpHref, nil
 	}

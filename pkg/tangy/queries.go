@@ -2,10 +2,10 @@ package tangy
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
-	"golang.org/x/exp/rand"
 )
 
 // contentIdsInVersion forms a single query to fetch a list of content ids in a repository version
