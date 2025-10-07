@@ -6,7 +6,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-const DefaultMaxPoolLimit int32 = 20
+const DefaultMaxPoolLimit = 20
 
 // Logger configuration options for logger
 type Logger struct {
@@ -23,7 +23,7 @@ type Database struct {
 	User       string
 	Password   string
 	CACertPath string `mapstructure:"ca_cert_path"`
-	PoolLimit  int32  `mapstructure:"pool_limit"`
+	PoolLimit  int    `mapstructure:"pool_limit"`
 }
 
 // Url return url of database
