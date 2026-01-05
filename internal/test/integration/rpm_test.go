@@ -3,11 +3,13 @@ package integration
 import (
 	"context"
 	"math/rand"
+	"strings"
 	"testing"
 
 	"github.com/content-services/tang/internal/config"
 	"github.com/content-services/tang/internal/zestwrapper"
 	"github.com/content-services/tang/pkg/tangy"
+	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
@@ -146,6 +148,43 @@ func (r *RpmSuite) TestRpmRepositoryVersionPackageSearch() {
 	search, err = r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{}, "a", 1)
 	assert.NoError(r.T(), err)
 	assert.Len(r.T(), search, 0)
+}
+
+func getDBConnection(t *testing.T) *pgx.Conn {
+	dbConfig := config.Get().Database
+	db := tangy.Database{
+		Name:     dbConfig.Name,
+		Host:     dbConfig.Host,
+		Port:     dbConfig.Port,
+		User:     dbConfig.User,
+		Password: dbConfig.Password,
+	}
+	conn, err := pgx.Connect(context.Background(), db.Url())
+	require.NoError(t, err)
+	return conn
+}
+
+func (r *RpmSuite) TestRpmRepositoryVersionPackageSearchOldMethod() {
+	firstVersionHref := &r.firstVersionHref
+
+	conn := getDBConnection(r.T())
+	defer conn.Close(context.Background())
+
+	// Update the repository version to use the old method
+	splitHref := strings.Split(*firstVersionHref, "/")
+	repoId := splitHref[len(splitHref)-4] // ignore trailing  versions//1/
+	_, err := conn.Exec(context.Background(), "UPDATE core_repositoryversion SET content_ids = null WHERE repository_id = $1", repoId)
+	require.NoError(r.T(), err)
+
+	search, err := r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*firstVersionHref}, "peng", 100)
+	assert.NoError(r.T(), err)
+	assert.Equal(r.T(), search[0].Name, "penguin")
+	search, err = r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*firstVersionHref}, "enguin", 100)
+	assert.NoError(r.T(), err)
+	assert.Len(r.T(), search, 0)
+	search, err = r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*firstVersionHref}, "bea", 100)
+	assert.NoError(r.T(), err)
+	assert.Empty(r.T(), search)
 }
 
 func (r *RpmSuite) TestRpmRepositoryVersionPackageGroupSearch() {

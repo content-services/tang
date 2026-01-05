@@ -113,7 +113,10 @@ func (t *tangyImpl) RpmRepositoryVersionPackageSearch(ctx context.Context, hrefs
 	}
 
 	args := pgx.NamedArgs{"nameFilter": search + "%", "limit": limit}
-	innerUnion := contentIdsInVersions(repoVerMap, &args)
+	innerUnion, err := contentIdsInVersions(ctx, conn, repoVerMap, &args)
+	if err != nil {
+		return nil, err
+	}
 
 	query := `SELECT DISTINCT ON (rp.name) rp.name, rp.summary
               FROM rpm_package rp `
@@ -152,7 +155,10 @@ func (t *tangyImpl) RpmRepositoryVersionPackageGroupSearch(ctx context.Context, 
 	}
 
 	args := pgx.NamedArgs{"nameFilter": "%" + search + "%"}
-	innerUnion := contentIdsInVersions(repoVerMap, &args)
+	innerUnion, err := contentIdsInVersions(ctx, conn, repoVerMap, &args)
+	if err != nil {
+		return nil, err
+	}
 
 	query := `SELECT DISTINCT ON (rp.name, rp.id, rp.packages) rp.name, rp.id, rp.description, rp.packages
               FROM rpm_packagegroup rp 
@@ -233,7 +239,10 @@ func (t *tangyImpl) RpmRepositoryVersionEnvironmentSearch(ctx context.Context, h
 	}
 
 	args := pgx.NamedArgs{"nameFilter": "%" + search + "%", "limit": limit}
-	innerUnion := contentIdsInVersions(repoVerMap, &args)
+	innerUnion, err := contentIdsInVersions(ctx, conn, repoVerMap, &args)
+	if err != nil {
+		return nil, err
+	}
 
 	query := `SELECT DISTINCT ON (rp.name, rp.id) rp.name, rp.id, rp.description
               FROM rpm_packageenvironment rp 
@@ -311,7 +320,10 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 	}
 	filterQuery := concatFilter.String()
 
-	innerUnion := contentIdsInVersions(repoVerMap, &args)
+	innerUnion, err := contentIdsInVersions(ctx, conn, repoVerMap, &args)
+	if err != nil {
+		return nil, 0, err
+	}
 
 	var countTotal int
 	err = conn.QueryRow(ctx, countQueryOpen+innerUnion+filterQuery,
@@ -403,7 +415,10 @@ func (t *tangyImpl) RpmRepositoryVersionModuleStreamsList(ctx context.Context, h
 	INNER JOIN rpm_modulemd_packages rmp on rmp.modulemd_id = rp.content_ptr_id
 	INNER JOIN rpm_package pack on pack.content_ptr_id = rmp.package_id `
 
-	innerUnion := contentIdsInVersions(repoVerMap, &args)
+	innerUnion, err := contentIdsInVersions(ctx, conn, repoVerMap, &args)
+	if err != nil {
+		return nil, err
+	}
 
 	rpmNameFilter := ""
 
@@ -451,7 +466,10 @@ func (t *tangyImpl) RpmRepositoryVersionPackageList(ctx context.Context, hrefs [
 
 	countQueryOpen := "select count(distinct(rp.content_ptr_id)) as total FROM rpm_package rp "
 	args := pgx.NamedArgs{"nameFilter": filterOpts.Name + "%"}
-	innerUnion := contentIdsInVersions(repoVerMap, &args)
+	innerUnion, err := contentIdsInVersions(ctx, conn, repoVerMap, &args)
+	if err != nil {
+		return nil, 0, err
+	}
 
 	var countTotal int
 	err = conn.QueryRow(ctx, countQueryOpen+innerUnion+" AND rp.name ILIKE CONCAT( @nameFilter::text, '%')", args).Scan(&countTotal)
