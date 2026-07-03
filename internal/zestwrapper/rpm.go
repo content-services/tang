@@ -102,6 +102,7 @@ func (r *RpmZest) CreateRepository(domain, name, url string) (repoHref string, r
 	defer httpResp.Body.Close()
 
 	rpmRpmRepository := *zest.NewRpmRpmRepository(name)
+	rpmRpmRepository.PackageSigningFingerprint = nil
 	if remoteResponse.PulpHref != nil {
 		rpmRpmRepository.SetRemote(*remoteResponse.PulpHref)
 	}

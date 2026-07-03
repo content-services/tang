@@ -53,8 +53,36 @@ rows, err := t.RpmRepositoryVersionPackageGroupSearch(context.Background(), []st
 if err != nil {
   return err
 }
+
+// Use Tangy to list Python packages from the latest version of a repository, grouped by name_normalized
+repositoryHref := "/api/pulp/default/api/v3/repositories/python/python/018c1c95-4281-76eb-b277-842cbad524f4/"
+packages, err := t.PythonPackageList(context.Background(), repositoryHref, tangy.PageOptions{Offset: 0, Limit: 10})
+if err != nil {
+  return err
+}
+
+// Use Tangy to list distribution files for a specific Python package version (filter by name_normalized)
+distributions, err := t.PythonDistributionList(context.Background(), repositoryHref, "shelf-reader", "0.1", tangy.PageOptions{Offset: 0, Limit: 10})
+if err != nil {
+  return err
+}
 ```
-See example.go for a complete example.
+See example.go for a complete RPM example.
+
+### Python packages
+
+Python support queries the `python_pythonpackagecontent` table. Each row is one installable distribution file (wheel, sdist, etc.).
+
+- **`PythonPackageList`** — lists packages in the latest repository version, grouped by `name_normalized`, with all versions and `latest_versions` (most recent `pulp_created` per version). Pagination is done in SQL.
+- **`PythonDistributionList`** — lists distribution files for a given `name_normalized` and `version`. Pagination is done in SQL.
+
+Repository href format:
+
+```
+/api/pulp/{domain}/api/v3/repositories/python/python/{uuid}/
+```
+
+`PythonDistributionList` filters by `name_normalized` (PEP 503), not the display `name`.
 
 ## Developing
 To develop for tangy, there are a few more things to know.
@@ -79,6 +107,41 @@ The default values provided in config.yaml.example will work with this server.
 
 #### Clean container volumes
 `make compose-clean`
+
+### Testing
+
+#### Unit tests
+
+Unit tests live under `pkg/tangy/` and do not require a running Pulp instance (they cover helpers, response assembly, and the `MockTangy` interface).
+
+```bash
+go test ./pkg/tangy/... -v
+```
+
+#### Integration tests
+
+Integration tests live under `internal/test/integration/`. They need a running Pulp stack and a `configs/config.yaml` that points at it (see `configs/config.yaml.example`).
+
+1. Start Pulp:
+
+```bash
+make compose-up
+```
+
+2. Run all integration tests:
+
+```bash
+make test-integration
+```
+
+Or run a specific suite:
+
+```bash
+CONFIG_PATH="$(pwd)/configs/" go test ./internal/test/integration/ -run TestPythonSuite -v
+CONFIG_PATH="$(pwd)/configs/" go test ./internal/test/integration/ -run TestRpmSuite -v
+```
+
+The Python integration test syncs `shelf-reader` from PyPI into a random domain via the Pulp API, then asserts tangy can read it from the database. Test data is left in the database after a run; use `make compose-clean` to wipe volumes and start fresh.
 
 ### Mocking
 Tangy also exports a mock interface you can regenerate using the [mockery](https://github.com/vektra/mockery) tool.
