@@ -70,6 +70,168 @@ func (_c *MockTangy_Close_Call) RunAndReturn(run func()) *MockTangy_Close_Call {
 	return _c
 }
 
+// MavenBuildList provides a mock function for the type MockTangy
+func (_mock *MockTangy) MavenBuildList(ctx context.Context, repositoryHref string, groupID string, artifactID string, version string, pageOpts PageOptions) (MavenBuildListResponse, error) {
+	ret := _mock.Called(ctx, repositoryHref, groupID, artifactID, version, pageOpts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MavenBuildList")
+	}
+
+	var r0 MavenBuildListResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, string, PageOptions) (MavenBuildListResponse, error)); ok {
+		return returnFunc(ctx, repositoryHref, groupID, artifactID, version, pageOpts)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, string, PageOptions) MavenBuildListResponse); ok {
+		r0 = returnFunc(ctx, repositoryHref, groupID, artifactID, version, pageOpts)
+	} else {
+		r0 = ret.Get(0).(MavenBuildListResponse)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string, string, PageOptions) error); ok {
+		r1 = returnFunc(ctx, repositoryHref, groupID, artifactID, version, pageOpts)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTangy_MavenBuildList_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MavenBuildList'
+type MockTangy_MavenBuildList_Call struct {
+	*mock.Call
+}
+
+// MavenBuildList is a helper method to define mock.On call
+//   - ctx context.Context
+//   - repositoryHref string
+//   - groupID string
+//   - artifactID string
+//   - version string
+//   - pageOpts PageOptions
+func (_e *MockTangy_Expecter) MavenBuildList(ctx any, repositoryHref any, groupID any, artifactID any, version any, pageOpts any) *MockTangy_MavenBuildList_Call {
+	return &MockTangy_MavenBuildList_Call{Call: _e.mock.On("MavenBuildList", ctx, repositoryHref, groupID, artifactID, version, pageOpts)}
+}
+
+func (_c *MockTangy_MavenBuildList_Call) Run(run func(ctx context.Context, repositoryHref string, groupID string, artifactID string, version string, pageOpts PageOptions)) *MockTangy_MavenBuildList_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 string
+		if args[3] != nil {
+			arg3 = args[3].(string)
+		}
+		var arg4 string
+		if args[4] != nil {
+			arg4 = args[4].(string)
+		}
+		var arg5 PageOptions
+		if args[5] != nil {
+			arg5 = args[5].(PageOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+			arg5,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTangy_MavenBuildList_Call) Return(mavenBuildListResponse MavenBuildListResponse, err error) *MockTangy_MavenBuildList_Call {
+	_c.Call.Return(mavenBuildListResponse, err)
+	return _c
+}
+
+func (_c *MockTangy_MavenBuildList_Call) RunAndReturn(run func(ctx context.Context, repositoryHref string, groupID string, artifactID string, version string, pageOpts PageOptions) (MavenBuildListResponse, error)) *MockTangy_MavenBuildList_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MavenPackageList provides a mock function for the type MockTangy
+func (_mock *MockTangy) MavenPackageList(ctx context.Context, repositoryHref string, pageOpts PageOptions) (MavenPackageListResponse, error) {
+	ret := _mock.Called(ctx, repositoryHref, pageOpts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MavenPackageList")
+	}
+
+	var r0 MavenPackageListResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, PageOptions) (MavenPackageListResponse, error)); ok {
+		return returnFunc(ctx, repositoryHref, pageOpts)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, PageOptions) MavenPackageListResponse); ok {
+		r0 = returnFunc(ctx, repositoryHref, pageOpts)
+	} else {
+		r0 = ret.Get(0).(MavenPackageListResponse)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, PageOptions) error); ok {
+		r1 = returnFunc(ctx, repositoryHref, pageOpts)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTangy_MavenPackageList_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MavenPackageList'
+type MockTangy_MavenPackageList_Call struct {
+	*mock.Call
+}
+
+// MavenPackageList is a helper method to define mock.On call
+//   - ctx context.Context
+//   - repositoryHref string
+//   - pageOpts PageOptions
+func (_e *MockTangy_Expecter) MavenPackageList(ctx any, repositoryHref any, pageOpts any) *MockTangy_MavenPackageList_Call {
+	return &MockTangy_MavenPackageList_Call{Call: _e.mock.On("MavenPackageList", ctx, repositoryHref, pageOpts)}
+}
+
+func (_c *MockTangy_MavenPackageList_Call) Run(run func(ctx context.Context, repositoryHref string, pageOpts PageOptions)) *MockTangy_MavenPackageList_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 PageOptions
+		if args[2] != nil {
+			arg2 = args[2].(PageOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTangy_MavenPackageList_Call) Return(mavenPackageListResponse MavenPackageListResponse, err error) *MockTangy_MavenPackageList_Call {
+	_c.Call.Return(mavenPackageListResponse, err)
+	return _c
+}
+
+func (_c *MockTangy_MavenPackageList_Call) RunAndReturn(run func(ctx context.Context, repositoryHref string, pageOpts PageOptions) (MavenPackageListResponse, error)) *MockTangy_MavenPackageList_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PythonDistributionList provides a mock function for the type MockTangy
 func (_mock *MockTangy) PythonDistributionList(ctx context.Context, repositoryHref string, nameNormalized string, version string, pageOpts PageOptions) (PythonDistributionListResponse, error) {
 	ret := _mock.Called(ctx, repositoryHref, nameNormalized, version, pageOpts)

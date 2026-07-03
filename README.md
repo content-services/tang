@@ -57,12 +57,22 @@ if err != nil {
 // Use Tangy to list Python packages from the latest version of a repository, grouped by name_normalized
 repositoryHref := "/api/pulp/default/api/v3/repositories/python/python/018c1c95-4281-76eb-b277-842cbad524f4/"
 packages, err := t.PythonPackageList(context.Background(), repositoryHref, tangy.PageOptions{Offset: 0, Limit: 10})
+
+// Use Tangy to list Maven packages from the latest version of a repository, grouped by group_id and artifact_id
+repositoryHref := "/api/pulp/default/api/v3/repositories/maven/maven/018c1c95-4281-76eb-b277-842cbad524f4/"
+response, err := t.MavenPackageList(context.Background(), repositoryHref, tangy.PageOptions{Offset: 0, Limit: 10})
 if err != nil {
   return err
 }
 
 // Use Tangy to list distribution files for a specific Python package version (filter by name_normalized)
 distributions, err := t.PythonDistributionList(context.Background(), repositoryHref, "shelf-reader", "0.1", tangy.PageOptions{Offset: 0, Limit: 10})
+if err != nil {
+  return err
+}
+
+// Use Tangy to list all builds (artifacts) for a specific Maven package version
+buildResponse, err := t.MavenBuildList(context.Background(), repositoryHref, "org.xutils", "xutils", "3.8.5", tangy.PageOptions{Offset: 0, Limit: 10})
 if err != nil {
   return err
 }

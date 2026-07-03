@@ -67,6 +67,8 @@ type Tangy interface {
 	RpmRepositoryVersionErrataList(ctx context.Context, hrefs []string, filterOpts ErrataListFilters, pageOpts PageOptions) ([]ErrataListItem, int, error)
 	PythonPackageList(ctx context.Context, repositoryHref string, pageOpts PageOptions) (PythonPackageListResponse, error)
 	PythonDistributionList(ctx context.Context, repositoryHref, nameNormalized, version string, pageOpts PageOptions) (PythonDistributionListResponse, error)
+	MavenPackageList(ctx context.Context, repositoryHref string, pageOpts PageOptions) (MavenPackageListResponse, error)
+	MavenBuildList(ctx context.Context, repositoryHref, groupID, artifactID, version string, pageOpts PageOptions) (MavenBuildListResponse, error)
 	Close()
 }
 
