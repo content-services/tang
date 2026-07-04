@@ -291,7 +291,7 @@ func getLatestRepositoryVersion(ctx context.Context, conn *pgxpool.Conn, repoUUI
 	return latestVersion, nil
 }
 
-// MavenBuildList lists all Maven artifacts (builds) for a specific group_id, artifact_id, and version
+// MavenBuildList lists all Maven artifacts (builds) for a specific group_id, and optionally artifact_id and version
 // from the latest version of a repository
 func (t *tangyImpl) MavenBuildList(ctx context.Context, repositoryHref, groupID, artifactID, version string, pageOpts PageOptions) (MavenBuildListResponse, error) {
 	if repositoryHref == "" {
@@ -326,10 +326,20 @@ func (t *tangyImpl) MavenBuildList(ctx context.Context, repositoryHref, groupID,
 	}}
 
 	args := pgx.NamedArgs{
-		"group_id":    groupID,
-		"artifact_id": artifactID,
-		"version":     version,
+		"group_id": groupID,
 	}
+
+	// Build WHERE clause conditionally based on provided parameters
+	var whereClause string
+	if artifactID != "" {
+		args["artifact_id"] = artifactID
+		whereClause += "\n\t\tAND rp.artifact_id = @artifact_id"
+	}
+	if version != "" {
+		args["version"] = version
+		whereClause += "\n\t\tAND rp.version = @version"
+	}
+
 	innerUnion, err := contentIdsInVersions(ctx, conn, repoVerMap, &args)
 	if err != nil {
 		return MavenBuildListResponse{}, err
@@ -340,9 +350,7 @@ func (t *tangyImpl) MavenBuildList(ctx context.Context, repositoryHref, groupID,
 		SELECT COUNT(*)
 		FROM maven_mavenartifact rp
 	` + innerUnion + `
-		AND rp.group_id = @group_id
-		AND rp.artifact_id = @artifact_id
-		AND rp.version = @version
+		AND rp.group_id = @group_id` + whereClause + `
 		AND rp.filename LIKE '%.pom'`
 
 	var countTotal int
@@ -357,9 +365,7 @@ func (t *tangyImpl) MavenBuildList(ctx context.Context, repositoryHref, groupID,
 		FROM maven_mavenartifact rp
 		INNER JOIN core_content cc ON rp.content_ptr_id = cc.pulp_id
 	` + innerUnion + `
-		AND rp.group_id = @group_id
-		AND rp.artifact_id = @artifact_id
-		AND rp.version = @version
+		AND rp.group_id = @group_id` + whereClause + `
 		AND rp.filename LIKE '%.pom'
 		ORDER BY cc.pulp_created DESC
 		LIMIT @limit OFFSET @offset`
