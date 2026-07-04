@@ -110,8 +110,8 @@ func (t *tangyImpl) PythonPackageList(ctx context.Context, repositoryHref string
 	searchFilter := ""
 	if filterOpts.Search != "" {
 		args["searchFilter"] = filterOpts.Search
-		searchFilter = ` AND (rp.name ILIKE CONCAT('%', @searchFilter::text, '%')
-			OR rp.name_normalized ILIKE CONCAT('%', @searchFilter::text, '%'))`
+		searchFilter = ` AND (rp.name ILIKE CONCAT(@searchFilter::text, '%')
+			OR rp.name_normalized ILIKE CONCAT(@searchFilter::text, '%'))`
 	}
 	innerUnion, err := contentIdsInVersions(ctx, conn, repoVerMap, &args)
 	if err != nil {

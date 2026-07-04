@@ -99,8 +99,8 @@ func (t *tangyImpl) MavenPackageList(ctx context.Context, repositoryHref string,
 	searchFilter := ""
 	if filterOpts.Search != "" {
 		args["searchFilter"] = filterOpts.Search
-		searchFilter = ` AND (rp.group_id ILIKE CONCAT('%', @searchFilter::text, '%')
-			OR rp.artifact_id ILIKE CONCAT('%', @searchFilter::text, '%'))`
+		searchFilter = ` AND (rp.group_id ILIKE CONCAT(@searchFilter::text, '%')
+			OR rp.artifact_id ILIKE CONCAT(@searchFilter::text, '%'))`
 	}
 	innerUnion, err := contentIdsInVersions(ctx, conn, repoVerMap, &args)
 	if err != nil {
