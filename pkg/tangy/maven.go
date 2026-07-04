@@ -25,6 +25,10 @@ type MavenPackageListItem struct {
 	LatestReleases []MavenReleaseInfo `json:"latest_releases"`
 }
 
+type MavenPackageListFilters struct {
+	Search string
+}
+
 type MavenPackageListResponse struct {
 	Results []MavenPackageListItem `json:"results"`
 	Total   int                    `json:"total"`
@@ -58,7 +62,7 @@ type mavenArtifactQueryResult struct {
 
 // MavenPackageList lists Maven packages from the latest version of a repository, grouped by group_id and artifact_id
 // Only includes artifacts with .pom files
-func (t *tangyImpl) MavenPackageList(ctx context.Context, repositoryHref string, pageOpts PageOptions) (MavenPackageListResponse, error) {
+func (t *tangyImpl) MavenPackageList(ctx context.Context, repositoryHref string, filterOpts MavenPackageListFilters, pageOpts PageOptions) (MavenPackageListResponse, error) {
 	if repositoryHref == "" {
 		return MavenPackageListResponse{}, nil
 	}
@@ -91,17 +95,26 @@ func (t *tangyImpl) MavenPackageList(ctx context.Context, repositoryHref string,
 	}}
 
 	args := pgx.NamedArgs{}
+	pomFilter := ` AND rp.filename LIKE '%.pom'`
+	searchFilter := ""
+	if filterOpts.Search != "" {
+		args["searchFilter"] = filterOpts.Search
+		searchFilter = ` AND (rp.group_id ILIKE CONCAT('%', @searchFilter::text, '%')
+			OR rp.artifact_id ILIKE CONCAT('%', @searchFilter::text, '%'))`
+	}
 	innerUnion, err := contentIdsInVersions(ctx, conn, repoVerMap, &args)
 	if err != nil {
 		return MavenPackageListResponse{}, err
 	}
+
+	artifactFilters := pomFilter + searchFilter
 
 	// Count query for total grouped packages
 	// Note: using 'rp' alias as required by contentIdsInVersions function
 	countQuery := `
 		SELECT COUNT(DISTINCT (rp.group_id, rp.artifact_id))
 		FROM maven_mavenartifact rp
-	` + innerUnion + ` AND rp.filename LIKE '%.pom'`
+	` + innerUnion + artifactFilters
 
 	var countTotal int
 	err = conn.QueryRow(ctx, countQuery, args).Scan(&countTotal)
@@ -125,8 +138,7 @@ func (t *tangyImpl) MavenPackageList(ctx context.Context, repositoryHref string,
 				ROW_NUMBER() OVER (PARTITION BY rp.group_id, rp.artifact_id, rp.version ORDER BY cc.pulp_created DESC) as rn
 			FROM maven_mavenartifact rp
 			INNER JOIN core_content cc ON rp.content_ptr_id = cc.pulp_id
-		` + innerUnion + `
-			AND rp.filename LIKE '%.pom'
+		` + innerUnion + artifactFilters + `
 		),
 		latest_per_version AS (
 			SELECT

@@ -161,8 +161,8 @@ func (_c *MockTangy_MavenBuildList_Call) RunAndReturn(run func(ctx context.Conte
 }
 
 // MavenPackageList provides a mock function for the type MockTangy
-func (_mock *MockTangy) MavenPackageList(ctx context.Context, repositoryHref string, pageOpts PageOptions) (MavenPackageListResponse, error) {
-	ret := _mock.Called(ctx, repositoryHref, pageOpts)
+func (_mock *MockTangy) MavenPackageList(ctx context.Context, repositoryHref string, filterOpts MavenPackageListFilters, pageOpts PageOptions) (MavenPackageListResponse, error) {
+	ret := _mock.Called(ctx, repositoryHref, filterOpts, pageOpts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for MavenPackageList")
@@ -170,16 +170,16 @@ func (_mock *MockTangy) MavenPackageList(ctx context.Context, repositoryHref str
 
 	var r0 MavenPackageListResponse
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, PageOptions) (MavenPackageListResponse, error)); ok {
-		return returnFunc(ctx, repositoryHref, pageOpts)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, MavenPackageListFilters, PageOptions) (MavenPackageListResponse, error)); ok {
+		return returnFunc(ctx, repositoryHref, filterOpts, pageOpts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, PageOptions) MavenPackageListResponse); ok {
-		r0 = returnFunc(ctx, repositoryHref, pageOpts)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, MavenPackageListFilters, PageOptions) MavenPackageListResponse); ok {
+		r0 = returnFunc(ctx, repositoryHref, filterOpts, pageOpts)
 	} else {
 		r0 = ret.Get(0).(MavenPackageListResponse)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, PageOptions) error); ok {
-		r1 = returnFunc(ctx, repositoryHref, pageOpts)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, MavenPackageListFilters, PageOptions) error); ok {
+		r1 = returnFunc(ctx, repositoryHref, filterOpts, pageOpts)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -194,12 +194,13 @@ type MockTangy_MavenPackageList_Call struct {
 // MavenPackageList is a helper method to define mock.On call
 //   - ctx context.Context
 //   - repositoryHref string
+//   - filterOpts MavenPackageListFilters
 //   - pageOpts PageOptions
-func (_e *MockTangy_Expecter) MavenPackageList(ctx any, repositoryHref any, pageOpts any) *MockTangy_MavenPackageList_Call {
-	return &MockTangy_MavenPackageList_Call{Call: _e.mock.On("MavenPackageList", ctx, repositoryHref, pageOpts)}
+func (_e *MockTangy_Expecter) MavenPackageList(ctx any, repositoryHref any, filterOpts any, pageOpts any) *MockTangy_MavenPackageList_Call {
+	return &MockTangy_MavenPackageList_Call{Call: _e.mock.On("MavenPackageList", ctx, repositoryHref, filterOpts, pageOpts)}
 }
 
-func (_c *MockTangy_MavenPackageList_Call) Run(run func(ctx context.Context, repositoryHref string, pageOpts PageOptions)) *MockTangy_MavenPackageList_Call {
+func (_c *MockTangy_MavenPackageList_Call) Run(run func(ctx context.Context, repositoryHref string, filterOpts MavenPackageListFilters, pageOpts PageOptions)) *MockTangy_MavenPackageList_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -209,14 +210,19 @@ func (_c *MockTangy_MavenPackageList_Call) Run(run func(ctx context.Context, rep
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 PageOptions
+		var arg2 MavenPackageListFilters
 		if args[2] != nil {
-			arg2 = args[2].(PageOptions)
+			arg2 = args[2].(MavenPackageListFilters)
+		}
+		var arg3 PageOptions
+		if args[3] != nil {
+			arg3 = args[3].(PageOptions)
 		}
 		run(
 			arg0,
 			arg1,
 			arg2,
+			arg3,
 		)
 	})
 	return _c
@@ -227,7 +233,7 @@ func (_c *MockTangy_MavenPackageList_Call) Return(mavenPackageListResponse Maven
 	return _c
 }
 
-func (_c *MockTangy_MavenPackageList_Call) RunAndReturn(run func(ctx context.Context, repositoryHref string, pageOpts PageOptions) (MavenPackageListResponse, error)) *MockTangy_MavenPackageList_Call {
+func (_c *MockTangy_MavenPackageList_Call) RunAndReturn(run func(ctx context.Context, repositoryHref string, filterOpts MavenPackageListFilters, pageOpts PageOptions) (MavenPackageListResponse, error)) *MockTangy_MavenPackageList_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -317,8 +323,8 @@ func (_c *MockTangy_PythonDistributionList_Call) RunAndReturn(run func(ctx conte
 }
 
 // PythonPackageList provides a mock function for the type MockTangy
-func (_mock *MockTangy) PythonPackageList(ctx context.Context, repositoryHref string, pageOpts PageOptions) (PythonPackageListResponse, error) {
-	ret := _mock.Called(ctx, repositoryHref, pageOpts)
+func (_mock *MockTangy) PythonPackageList(ctx context.Context, repositoryHref string, filterOpts PythonPackageListFilters, pageOpts PageOptions) (PythonPackageListResponse, error) {
+	ret := _mock.Called(ctx, repositoryHref, filterOpts, pageOpts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for PythonPackageList")
@@ -326,16 +332,16 @@ func (_mock *MockTangy) PythonPackageList(ctx context.Context, repositoryHref st
 
 	var r0 PythonPackageListResponse
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, PageOptions) (PythonPackageListResponse, error)); ok {
-		return returnFunc(ctx, repositoryHref, pageOpts)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, PythonPackageListFilters, PageOptions) (PythonPackageListResponse, error)); ok {
+		return returnFunc(ctx, repositoryHref, filterOpts, pageOpts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, PageOptions) PythonPackageListResponse); ok {
-		r0 = returnFunc(ctx, repositoryHref, pageOpts)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, PythonPackageListFilters, PageOptions) PythonPackageListResponse); ok {
+		r0 = returnFunc(ctx, repositoryHref, filterOpts, pageOpts)
 	} else {
 		r0 = ret.Get(0).(PythonPackageListResponse)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, PageOptions) error); ok {
-		r1 = returnFunc(ctx, repositoryHref, pageOpts)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, PythonPackageListFilters, PageOptions) error); ok {
+		r1 = returnFunc(ctx, repositoryHref, filterOpts, pageOpts)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -350,12 +356,13 @@ type MockTangy_PythonPackageList_Call struct {
 // PythonPackageList is a helper method to define mock.On call
 //   - ctx context.Context
 //   - repositoryHref string
+//   - filterOpts PythonPackageListFilters
 //   - pageOpts PageOptions
-func (_e *MockTangy_Expecter) PythonPackageList(ctx any, repositoryHref any, pageOpts any) *MockTangy_PythonPackageList_Call {
-	return &MockTangy_PythonPackageList_Call{Call: _e.mock.On("PythonPackageList", ctx, repositoryHref, pageOpts)}
+func (_e *MockTangy_Expecter) PythonPackageList(ctx any, repositoryHref any, filterOpts any, pageOpts any) *MockTangy_PythonPackageList_Call {
+	return &MockTangy_PythonPackageList_Call{Call: _e.mock.On("PythonPackageList", ctx, repositoryHref, filterOpts, pageOpts)}
 }
 
-func (_c *MockTangy_PythonPackageList_Call) Run(run func(ctx context.Context, repositoryHref string, pageOpts PageOptions)) *MockTangy_PythonPackageList_Call {
+func (_c *MockTangy_PythonPackageList_Call) Run(run func(ctx context.Context, repositoryHref string, filterOpts PythonPackageListFilters, pageOpts PageOptions)) *MockTangy_PythonPackageList_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -365,14 +372,19 @@ func (_c *MockTangy_PythonPackageList_Call) Run(run func(ctx context.Context, re
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 PageOptions
+		var arg2 PythonPackageListFilters
 		if args[2] != nil {
-			arg2 = args[2].(PageOptions)
+			arg2 = args[2].(PythonPackageListFilters)
+		}
+		var arg3 PageOptions
+		if args[3] != nil {
+			arg3 = args[3].(PageOptions)
 		}
 		run(
 			arg0,
 			arg1,
 			arg2,
+			arg3,
 		)
 	})
 	return _c
@@ -383,7 +395,7 @@ func (_c *MockTangy_PythonPackageList_Call) Return(pythonPackageListResponse Pyt
 	return _c
 }
 
-func (_c *MockTangy_PythonPackageList_Call) RunAndReturn(run func(ctx context.Context, repositoryHref string, pageOpts PageOptions) (PythonPackageListResponse, error)) *MockTangy_PythonPackageList_Call {
+func (_c *MockTangy_PythonPackageList_Call) RunAndReturn(run func(ctx context.Context, repositoryHref string, filterOpts PythonPackageListFilters, pageOpts PageOptions) (PythonPackageListResponse, error)) *MockTangy_PythonPackageList_Call {
 	_c.Call.Return(run)
 	return _c
 }

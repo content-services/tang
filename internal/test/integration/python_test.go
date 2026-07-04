@@ -75,7 +75,7 @@ func TestPythonSuite(t *testing.T) {
 }
 
 func (p *PythonSuite) TestPythonPackageList() {
-	response, err := p.tangy.PythonPackageList(context.Background(), p.repositoryHref, tangy.PageOptions{
+	response, err := p.tangy.PythonPackageList(context.Background(), p.repositoryHref, tangy.PythonPackageListFilters{}, tangy.PageOptions{
 		Offset: 0,
 		Limit:  10,
 	})
@@ -98,8 +98,27 @@ func (p *PythonSuite) TestPythonPackageList() {
 	assert.True(p.T(), foundVersion)
 }
 
+func (p *PythonSuite) TestPythonPackageListSearchFilter() {
+	response, err := p.tangy.PythonPackageList(context.Background(), p.repositoryHref, tangy.PythonPackageListFilters{Search: "shelf"}, tangy.PageOptions{
+		Offset: 0,
+		Limit:  10,
+	})
+	require.NoError(p.T(), err)
+	require.NotEmpty(p.T(), response.Results)
+	assert.Equal(p.T(), 1, response.Total)
+	assert.Equal(p.T(), "shelf-reader", response.Results[0].NameNormalized)
+
+	response, err = p.tangy.PythonPackageList(context.Background(), p.repositoryHref, tangy.PythonPackageListFilters{Search: "nonexistent-package"}, tangy.PageOptions{
+		Offset: 0,
+		Limit:  10,
+	})
+	require.NoError(p.T(), err)
+	assert.Empty(p.T(), response.Results)
+	assert.Zero(p.T(), response.Total)
+}
+
 func (p *PythonSuite) TestPythonPackageListPagination() {
-	response, err := p.tangy.PythonPackageList(context.Background(), p.repositoryHref, tangy.PageOptions{
+	response, err := p.tangy.PythonPackageList(context.Background(), p.repositoryHref, tangy.PythonPackageListFilters{}, tangy.PageOptions{
 		Offset: 0,
 		Limit:  1,
 	})
@@ -108,7 +127,7 @@ func (p *PythonSuite) TestPythonPackageListPagination() {
 	assert.Equal(p.T(), 1, response.Total)
 	assert.Equal(p.T(), 1, response.Limit)
 
-	response, err = p.tangy.PythonPackageList(context.Background(), p.repositoryHref, tangy.PageOptions{
+	response, err = p.tangy.PythonPackageList(context.Background(), p.repositoryHref, tangy.PythonPackageListFilters{}, tangy.PageOptions{
 		Offset: 1,
 		Limit:  1,
 	})
@@ -118,7 +137,7 @@ func (p *PythonSuite) TestPythonPackageListPagination() {
 }
 
 func (p *PythonSuite) TestPythonPackageListEmptyHref() {
-	response, err := p.tangy.PythonPackageList(context.Background(), "", tangy.PageOptions{Limit: 10})
+	response, err := p.tangy.PythonPackageList(context.Background(), "", tangy.PythonPackageListFilters{}, tangy.PageOptions{Limit: 10})
 	require.NoError(p.T(), err)
 	assert.Empty(p.T(), response.Results)
 	assert.Zero(p.T(), response.Total)
