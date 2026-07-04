@@ -146,6 +146,7 @@ func TestMockTangyPythonPackageList(t *testing.T) {
 	ctx := context.Background()
 	repoHref := "/api/pulp/default/api/v3/repositories/python/python/018c1c95-4281-76eb-b277-842cbad524f4/"
 	pageOpts := PageOptions{Offset: 0, Limit: 10}
+	filterOpts := PythonPackageListFilters{Search: "dj"}
 
 	expected := PythonPackageListResponse{
 		Results: []PythonPackageListItem{
@@ -163,9 +164,9 @@ func TestMockTangyPythonPackageList(t *testing.T) {
 		Offset: 0,
 	}
 
-	mockTangy.On("PythonPackageList", ctx, repoHref, pageOpts).Return(expected, nil)
+	mockTangy.On("PythonPackageList", ctx, repoHref, filterOpts, pageOpts).Return(expected, nil)
 
-	got, err := mockTangy.PythonPackageList(ctx, repoHref, pageOpts)
+	got, err := mockTangy.PythonPackageList(ctx, repoHref, filterOpts, pageOpts)
 	require.NoError(t, err)
 	assert.Equal(t, expected, got)
 }

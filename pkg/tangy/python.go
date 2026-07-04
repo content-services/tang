@@ -29,6 +29,10 @@ type PythonPackageListResponse struct {
 	Offset  int                     `json:"offset"`
 }
 
+type PythonPackageListFilters struct {
+	Search string
+}
+
 type PythonDistributionListItem struct {
 	Name           string `json:"name"`
 	NameNormalized string `json:"name_normalized"`
@@ -69,7 +73,7 @@ type pythonDistributionRow struct {
 
 // PythonPackageList lists Python packages from the latest version of a repository,
 // grouped by name_normalized with SQL-level pagination.
-func (t *tangyImpl) PythonPackageList(ctx context.Context, repositoryHref string, pageOpts PageOptions) (PythonPackageListResponse, error) {
+func (t *tangyImpl) PythonPackageList(ctx context.Context, repositoryHref string, filterOpts PythonPackageListFilters, pageOpts PageOptions) (PythonPackageListResponse, error) {
 	if repositoryHref == "" {
 		return PythonPackageListResponse{}, nil
 	}
@@ -103,6 +107,12 @@ func (t *tangyImpl) PythonPackageList(ctx context.Context, repositoryHref string
 		"limit":  pageOpts.Limit,
 		"offset": pageOpts.Offset,
 	}
+	searchFilter := ""
+	if filterOpts.Search != "" {
+		args["searchFilter"] = filterOpts.Search
+		searchFilter = ` AND (rp.name ILIKE CONCAT('%', @searchFilter::text, '%')
+			OR rp.name_normalized ILIKE CONCAT('%', @searchFilter::text, '%'))`
+	}
 	innerUnion, err := contentIdsInVersions(ctx, conn, repoVerMap, &args)
 	if err != nil {
 		return PythonPackageListResponse{}, err
@@ -111,7 +121,7 @@ func (t *tangyImpl) PythonPackageList(ctx context.Context, repositoryHref string
 	countQuery := `
 		SELECT COUNT(DISTINCT rp.name_normalized)
 		FROM python_pythonpackagecontent rp
-	` + innerUnion
+	` + innerUnion + searchFilter
 
 	var countTotal int
 	err = conn.QueryRow(ctx, countQuery, args).Scan(&countTotal)
@@ -124,7 +134,7 @@ func (t *tangyImpl) PythonPackageList(ctx context.Context, repositoryHref string
 			SELECT rp.name_normalized, rp.name, rp.version, cc.pulp_created
 			FROM python_pythonpackagecontent rp
 			INNER JOIN core_content cc ON rp.content_ptr_id = cc.pulp_id
-	` + innerUnion + `
+	` + innerUnion + searchFilter + `
 		),
 		package_versions AS (
 			SELECT name_normalized, MIN(name) AS name, version, MAX(pulp_created) AS created_at

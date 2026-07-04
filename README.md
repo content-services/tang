@@ -56,7 +56,7 @@ if err != nil {
 
 // Use Tangy to list Python packages from the latest version of a repository, grouped by name_normalized
 repositoryHref := "/api/pulp/default/api/v3/repositories/python/python/018c1c95-4281-76eb-b277-842cbad524f4/"
-packages, err := t.PythonPackageList(context.Background(), repositoryHref, tangy.PageOptions{Offset: 0, Limit: 10})
+packages, err := t.PythonPackageList(context.Background(), repositoryHref, tangy.PythonPackageListFilters{Search: "django"}, tangy.PageOptions{Offset: 0, Limit: 10})
 
 // Use Tangy to list Maven packages from the latest version of a repository, grouped by group_id and artifact_id
 repositoryHref := "/api/pulp/default/api/v3/repositories/maven/maven/018c1c95-4281-76eb-b277-842cbad524f4/"
@@ -83,7 +83,7 @@ See example.go for a complete RPM example.
 
 Python support queries the `python_pythonpackagecontent` table. Each row is one installable distribution file (wheel, sdist, etc.).
 
-- **`PythonPackageList`** — lists packages in the latest repository version, grouped by `name_normalized`, with all versions and `latest_versions` (most recent `pulp_created` per version). Pagination is done in SQL.
+- **`PythonPackageList`** — lists packages in the latest repository version, grouped by `name_normalized`, with all versions and `latest_versions` (most recent `pulp_created` per version). Supports optional `Search` filter on `name` or `name_normalized`. Pagination is done in SQL.
 - **`PythonDistributionList`** — lists distribution files for a given `name_normalized` and `version`. Pagination is done in SQL.
 
 Repository href format:
