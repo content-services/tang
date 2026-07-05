@@ -71,6 +71,12 @@ if err != nil {
   return err
 }
 
+// Use Tangy to get metadata for a specific Python package version (filter by name_normalized)
+detail, err := t.PythonPackageGet(context.Background(), repositoryHref, "shelf-reader", "0.1")
+if err != nil {
+  return err
+}
+
 // Use Tangy to list all builds (artifacts) for a specific Maven package version
 buildResponse, err := t.MavenBuildList(context.Background(), repositoryHref, "org.xutils", "xutils", "3.8.5", tangy.PageOptions{Offset: 0, Limit: 10})
 if err != nil {
@@ -85,6 +91,7 @@ Python support queries the `python_pythonpackagecontent` table. Each row is one 
 
 - **`PythonPackageList`** — lists packages in the latest repository version, grouped by `name_normalized`, with all versions and `latest_versions` (most recent `pulp_created` per version). Supports optional `Search` filter on `name` or `name_normalized`. Pagination is done in SQL.
 - **`PythonDistributionList`** — lists distribution files for a given `name_normalized` and `version`. Pagination is done in SQL.
+- **`PythonPackageGet`** — returns package metadata for a given `name_normalized` and `version`, plus all other versions available in the repository and all distribution files for that version. Metadata is taken from one representative distribution (sdist preferred). Returns `ErrPythonPackageNotFound` when the package version is not in the repository.
 
 Repository href format:
 
