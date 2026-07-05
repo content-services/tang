@@ -204,3 +204,84 @@ func TestMockTangyPythonDistributionList(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, expected, got)
 }
+
+func TestMockTangyPythonPackageGet(t *testing.T) {
+	t.Parallel()
+
+	mockTangy := NewMockTangy(t)
+	ctx := context.Background()
+	repoHref := "/api/pulp/default/api/v3/repositories/python/python/018c1c95-4281-76eb-b277-842cbad524f4/"
+
+	expected := PythonPackageDetail{
+		Name:           "Django",
+		NameNormalized: "django",
+		Version:        "5.0",
+		Summary:        "A high-level Python web framework",
+		Description:    "Django is a high-level Python web framework.",
+		Author:         "Django Software Foundation",
+		License:        "BSD-3-Clause",
+		ProjectURL:     "https://www.djangoproject.com/",
+		LastUpdated:    "2024-01-01T12:00:00Z",
+		Versions:       []string{"4.2", "5.0"},
+		LatestVersions: []PythonVersionInfo{
+			{Version: "4.2", CreatedAt: "2023-01-01T12:00:00Z"},
+			{Version: "5.0", CreatedAt: "2024-01-01T12:00:00Z"},
+		},
+		Distributions: []PythonDistributionListItem{
+			{
+				Name:           "Django",
+				NameNormalized: "django",
+				Version:        "5.0",
+				Filename:       "django-5.0-py3-none-any.whl",
+				PackageType:    "bdist_wheel",
+				PythonVersion:  "py3",
+				Sha256:         "abc123",
+				Size:           1024,
+				CreatedAt:      "2024-01-01T12:00:00Z",
+			},
+		},
+	}
+
+	mockTangy.On("PythonPackageGet", ctx, repoHref, "django", "5.0").Return(expected, nil)
+
+	got, err := mockTangy.PythonPackageGet(ctx, repoHref, "django", "5.0")
+	require.NoError(t, err)
+	assert.Equal(t, expected, got)
+}
+
+func TestParsePythonJSONStringSlice(t *testing.T) {
+	t.Parallel()
+
+	assert.Nil(t, parsePythonJSONStringSlice(nil))
+	assert.Nil(t, parsePythonJSONStringSlice([]byte("null")))
+
+	got := parsePythonJSONStringSlice([]byte(`["requests", "urllib3"]`))
+	assert.Equal(t, []string{"requests", "urllib3"}, got)
+}
+
+func TestParsePythonJSONStringMap(t *testing.T) {
+	t.Parallel()
+
+	assert.Nil(t, parsePythonJSONStringMap(nil))
+	assert.Nil(t, parsePythonJSONStringMap([]byte("null")))
+
+	got := parsePythonJSONStringMap([]byte(`{"Homepage": "https://example.com", "Source": "https://github.com/example"}`))
+	assert.Equal(t, map[string]string{
+		"Homepage": "https://example.com",
+		"Source":   "https://github.com/example",
+	}, got)
+}
+
+func TestParsePythonLatestVersionsJSON(t *testing.T) {
+	t.Parallel()
+
+	got, err := parsePythonLatestVersionsJSON([]byte(`[
+		{"version": "1.0", "created_at": "2024-01-01T12:00:00Z"},
+		{"version": "2.0", "created_at": "2024-06-01T12:00:00Z"}
+	]`))
+	require.NoError(t, err)
+	assert.Equal(t, []PythonVersionInfo{
+		{Version: "1.0", CreatedAt: "2024-01-01T12:00:00Z"},
+		{Version: "2.0", CreatedAt: "2024-06-01T12:00:00Z"},
+	}, got)
+}

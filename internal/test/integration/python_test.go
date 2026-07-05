@@ -173,6 +173,59 @@ func (p *PythonSuite) TestPythonDistributionList() {
 	assert.NotEmpty(p.T(), packageTypes)
 }
 
+func (p *PythonSuite) TestPythonPackageGet() {
+	detail, err := p.tangy.PythonPackageGet(
+		context.Background(),
+		p.repositoryHref,
+		"shelf-reader",
+		"0.1",
+	)
+	require.NoError(p.T(), err)
+	assert.Equal(p.T(), "shelf-reader", detail.NameNormalized)
+	assert.Equal(p.T(), "0.1", detail.Version)
+	assert.NotEmpty(p.T(), detail.Name)
+	assert.NotEmpty(p.T(), detail.LastUpdated)
+	assert.Contains(p.T(), detail.Versions, "0.1")
+	require.NotEmpty(p.T(), detail.LatestVersions)
+
+	foundVersion := false
+	for _, latest := range detail.LatestVersions {
+		if latest.Version == "0.1" {
+			foundVersion = true
+			assert.NotEmpty(p.T(), latest.CreatedAt)
+		}
+	}
+	assert.True(p.T(), foundVersion)
+
+	require.NotEmpty(p.T(), detail.Distributions)
+	for _, dist := range detail.Distributions {
+		assert.Equal(p.T(), "shelf-reader", dist.NameNormalized)
+		assert.Equal(p.T(), "0.1", dist.Version)
+		assert.NotEmpty(p.T(), dist.Filename)
+		assert.NotEmpty(p.T(), dist.PackageType)
+		assert.NotEmpty(p.T(), dist.Sha256)
+		assert.NotZero(p.T(), dist.Size)
+		assert.NotEmpty(p.T(), dist.CreatedAt)
+	}
+}
+
+func (p *PythonSuite) TestPythonPackageGetNotFound() {
+	_, err := p.tangy.PythonPackageGet(
+		context.Background(),
+		p.repositoryHref,
+		"shelf-reader",
+		"9.9.9",
+	)
+	require.Error(p.T(), err)
+	assert.ErrorIs(p.T(), err, tangy.ErrPythonPackageNotFound)
+}
+
+func (p *PythonSuite) TestPythonPackageGetEmptyHref() {
+	detail, err := p.tangy.PythonPackageGet(context.Background(), "", "shelf-reader", "0.1")
+	require.NoError(p.T(), err)
+	assert.Empty(p.T(), detail.NameNormalized)
+}
+
 func (p *PythonSuite) TestPythonDistributionListPagination() {
 	response, err := p.tangy.PythonDistributionList(
 		context.Background(),

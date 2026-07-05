@@ -322,6 +322,84 @@ func (_c *MockTangy_PythonDistributionList_Call) RunAndReturn(run func(ctx conte
 	return _c
 }
 
+// PythonPackageGet provides a mock function for the type MockTangy
+func (_mock *MockTangy) PythonPackageGet(ctx context.Context, repositoryHref string, nameNormalized string, version string) (PythonPackageDetail, error) {
+	ret := _mock.Called(ctx, repositoryHref, nameNormalized, version)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PythonPackageGet")
+	}
+
+	var r0 PythonPackageDetail
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) (PythonPackageDetail, error)); ok {
+		return returnFunc(ctx, repositoryHref, nameNormalized, version)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) PythonPackageDetail); ok {
+		r0 = returnFunc(ctx, repositoryHref, nameNormalized, version)
+	} else {
+		r0 = ret.Get(0).(PythonPackageDetail)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
+		r1 = returnFunc(ctx, repositoryHref, nameNormalized, version)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTangy_PythonPackageGet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PythonPackageGet'
+type MockTangy_PythonPackageGet_Call struct {
+	*mock.Call
+}
+
+// PythonPackageGet is a helper method to define mock.On call
+//   - ctx context.Context
+//   - repositoryHref string
+//   - nameNormalized string
+//   - version string
+func (_e *MockTangy_Expecter) PythonPackageGet(ctx any, repositoryHref any, nameNormalized any, version any) *MockTangy_PythonPackageGet_Call {
+	return &MockTangy_PythonPackageGet_Call{Call: _e.mock.On("PythonPackageGet", ctx, repositoryHref, nameNormalized, version)}
+}
+
+func (_c *MockTangy_PythonPackageGet_Call) Run(run func(ctx context.Context, repositoryHref string, nameNormalized string, version string)) *MockTangy_PythonPackageGet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 string
+		if args[3] != nil {
+			arg3 = args[3].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTangy_PythonPackageGet_Call) Return(pythonPackageDetail PythonPackageDetail, err error) *MockTangy_PythonPackageGet_Call {
+	_c.Call.Return(pythonPackageDetail, err)
+	return _c
+}
+
+func (_c *MockTangy_PythonPackageGet_Call) RunAndReturn(run func(ctx context.Context, repositoryHref string, nameNormalized string, version string) (PythonPackageDetail, error)) *MockTangy_PythonPackageGet_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PythonPackageList provides a mock function for the type MockTangy
 func (_mock *MockTangy) PythonPackageList(ctx context.Context, repositoryHref string, filterOpts PythonPackageListFilters, pageOpts PageOptions) (PythonPackageListResponse, error) {
 	ret := _mock.Called(ctx, repositoryHref, filterOpts, pageOpts)
