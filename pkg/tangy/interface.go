@@ -68,6 +68,7 @@ type Tangy interface {
 	PythonPackageList(ctx context.Context, repositoryHref string, filterOpts PythonPackageListFilters, pageOpts PageOptions) (PythonPackageListResponse, error)
 	PythonDistributionList(ctx context.Context, repositoryHref, nameNormalized, version string, pageOpts PageOptions) (PythonDistributionListResponse, error)
 	PythonPackageGet(ctx context.Context, repositoryHref, nameNormalized, version string) (PythonPackageDetail, error)
+	PythonPackageVersionsGet(ctx context.Context, repositoryHref, nameNormalized string) ([]PythonPackageDetail, error)
 	MavenPackageList(ctx context.Context, repositoryHref string, filterOpts MavenPackageListFilters, pageOpts PageOptions) (MavenPackageListResponse, error)
 	MavenBuildList(ctx context.Context, repositoryHref, groupID, artifactID, version string, pageOpts PageOptions) (MavenBuildListResponse, error)
 	Close()
