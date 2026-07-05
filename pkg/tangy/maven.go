@@ -291,7 +291,7 @@ func getLatestRepositoryVersion(ctx context.Context, conn *pgxpool.Conn, repoUUI
 	return latestVersion, nil
 }
 
-// MavenBuildList lists all Maven artifacts (builds) for a specific group_id, and optionally artifact_id and version
+// MavenBuildList lists all Maven artifacts (builds), optionally filtered by group_id, artifact_id, and version
 // from the latest version of a repository
 func (t *tangyImpl) MavenBuildList(ctx context.Context, repositoryHref, groupID, artifactID, version string, pageOpts PageOptions) (MavenBuildListResponse, error) {
 	if repositoryHref == "" {
@@ -325,12 +325,14 @@ func (t *tangyImpl) MavenBuildList(ctx context.Context, repositoryHref, groupID,
 		Version:        latestVersion,
 	}}
 
-	args := pgx.NamedArgs{
-		"group_id": groupID,
-	}
+	args := pgx.NamedArgs{}
 
 	// Build WHERE clause conditionally based on provided parameters
 	var whereClause string
+	if groupID != "" {
+		args["group_id"] = groupID
+		whereClause += "\n\t\tAND rp.group_id = @group_id"
+	}
 	if artifactID != "" {
 		args["artifact_id"] = artifactID
 		whereClause += "\n\t\tAND rp.artifact_id = @artifact_id"
@@ -349,8 +351,7 @@ func (t *tangyImpl) MavenBuildList(ctx context.Context, repositoryHref, groupID,
 	countQuery := `
 		SELECT COUNT(*)
 		FROM maven_mavenartifact rp
-	` + innerUnion + `
-		AND rp.group_id = @group_id` + whereClause + `
+	` + innerUnion + whereClause + `
 		AND rp.filename LIKE '%.pom'`
 
 	var countTotal int
@@ -364,8 +365,7 @@ func (t *tangyImpl) MavenBuildList(ctx context.Context, repositoryHref, groupID,
 		SELECT rp.group_id, rp.artifact_id, rp.version, rp.filename, cc.pulp_created as created_at
 		FROM maven_mavenartifact rp
 		INNER JOIN core_content cc ON rp.content_ptr_id = cc.pulp_id
-	` + innerUnion + `
-		AND rp.group_id = @group_id` + whereClause + `
+	` + innerUnion + whereClause + `
 		AND rp.filename LIKE '%.pom'
 		ORDER BY cc.pulp_created DESC
 		LIMIT @limit OFFSET @offset`
