@@ -57,28 +57,28 @@ type PythonDistributionListResponse struct {
 // PythonPackageDetail holds metadata for a specific package name and version in a repository.
 // Metadata is taken from one representative distribution (sdist preferred, then most recently synced).
 type PythonPackageDetail struct {
-	Name                   string              `json:"name"`
-	NameNormalized         string              `json:"name_normalized"`
-	Version                string              `json:"version"`
-	Summary                string              `json:"summary"`
-	Description            string              `json:"description"`
-	DescriptionContentType string              `json:"description_content_type,omitempty"`
-	Author                 string              `json:"author"`
-	AuthorEmail            string              `json:"author_email,omitempty"`
-	Maintainer             string              `json:"maintainer,omitempty"`
-	MaintainerEmail        string              `json:"maintainer_email,omitempty"`
-	License                string              `json:"license"`
-	LicenseExpression      string              `json:"license_expression,omitempty"`
-	HomePage               string              `json:"home_page,omitempty"`
-	ProjectURL             string              `json:"project_url"`
-	ProjectURLs            map[string]string   `json:"project_urls,omitempty"`
-	Keywords               string              `json:"keywords,omitempty"`
-	RequiresPython         string              `json:"requires_python,omitempty"`
-	Classifiers            []string            `json:"classifiers,omitempty"`
-	RequiresDist           []string            `json:"requires_dist,omitempty"`
-	LastUpdated            string                      `json:"last_updated"`
-	Versions               []string                    `json:"versions"`
-	LatestVersions         []PythonVersionInfo         `json:"latest_versions"`
+	Name                   string                       `json:"name"`
+	NameNormalized         string                       `json:"name_normalized"`
+	Version                string                       `json:"version"`
+	Summary                string                       `json:"summary"`
+	Description            string                       `json:"description"`
+	DescriptionContentType string                       `json:"description_content_type,omitempty"`
+	Author                 string                       `json:"author"`
+	AuthorEmail            string                       `json:"author_email,omitempty"`
+	Maintainer             string                       `json:"maintainer,omitempty"`
+	MaintainerEmail        string                       `json:"maintainer_email,omitempty"`
+	License                string                       `json:"license"`
+	LicenseExpression      string                       `json:"license_expression,omitempty"`
+	HomePage               string                       `json:"home_page,omitempty"`
+	ProjectURL             string                       `json:"project_url"`
+	ProjectURLs            map[string]string            `json:"project_urls,omitempty"`
+	Keywords               string                       `json:"keywords,omitempty"`
+	RequiresPython         string                       `json:"requires_python,omitempty"`
+	Classifiers            []string                     `json:"classifiers,omitempty"`
+	RequiresDist           []string                     `json:"requires_dist,omitempty"`
+	LastUpdated            string                       `json:"last_updated"`
+	Versions               []string                     `json:"versions"`
+	LatestVersions         []PythonVersionInfo          `json:"latest_versions"`
 	Distributions          []PythonDistributionListItem `json:"distributions"`
 }
 
