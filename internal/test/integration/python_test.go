@@ -15,9 +15,12 @@ import (
 )
 
 const (
-	testPythonRepoName = "shelf-reader-fixture"
-	testPythonRepoURL  = "https://pypi.org/"
-	testPythonIncludes = "shelf-reader"
+	testPythonRepoName              = "shelf-reader-fixture"
+	testPythonMultiVersionRepoName  = "idna-multi-version-fixture"
+	testPythonMultiVersionPackage   = "idna"
+	testPythonMultiVersionKeepCount = int64(2)
+	testPythonRepoURL               = "https://pypi.org/"
+	testPythonIncludes              = "shelf-reader"
 )
 
 type PythonSuite struct {
@@ -37,6 +40,7 @@ func (p *PythonSuite) createTestRepository(t *testing.T) {
 		testPythonRepoName,
 		testPythonRepoURL,
 		[]string{testPythonIncludes},
+		0,
 	)
 	require.NoError(t, err)
 
@@ -207,6 +211,67 @@ func (p *PythonSuite) TestPythonPackageGet() {
 		assert.NotZero(p.T(), dist.Size)
 		assert.NotEmpty(p.T(), dist.CreatedAt)
 	}
+}
+
+func (p *PythonSuite) TestPythonPackageVersionsGet() {
+	repoHref, remoteHref, err := p.client.CreateRepository(
+		p.domainName,
+		testPythonMultiVersionRepoName,
+		testPythonRepoURL,
+		[]string{testPythonMultiVersionPackage},
+		testPythonMultiVersionKeepCount,
+	)
+	require.NoError(p.T(), err)
+
+	syncTask, err := p.client.SyncPythonRepository(repoHref, remoteHref)
+	require.NoError(p.T(), err)
+
+	_, err = p.client.PollTask(syncTask)
+	require.NoError(p.T(), err)
+
+	details, err := p.tangy.PythonPackageVersionsGet(
+		context.Background(),
+		repoHref,
+		testPythonMultiVersionPackage,
+	)
+	require.NoError(p.T(), err)
+	require.GreaterOrEqual(p.T(), len(details), 2)
+
+	versions := make([]string, len(details))
+	for i, detail := range details {
+		assert.Equal(p.T(), testPythonMultiVersionPackage, detail.NameNormalized)
+		assert.NotEmpty(p.T(), detail.Name)
+		assert.NotEmpty(p.T(), detail.Version)
+		assert.NotEmpty(p.T(), detail.LastUpdated)
+		require.NotEmpty(p.T(), detail.Distributions)
+
+		for _, dist := range detail.Distributions {
+			assert.Equal(p.T(), testPythonMultiVersionPackage, dist.NameNormalized)
+			assert.Equal(p.T(), detail.Version, dist.Version)
+		}
+
+		versions[i] = detail.Version
+	}
+
+	assert.Len(p.T(), details[0].Versions, len(details))
+	assert.Len(p.T(), details[0].LatestVersions, len(details))
+	assert.Equal(p.T(), details[0].Versions, versions)
+}
+
+func (p *PythonSuite) TestPythonPackageVersionsGetNotFound() {
+	_, err := p.tangy.PythonPackageVersionsGet(
+		context.Background(),
+		p.repositoryHref,
+		"nonexistent-package",
+	)
+	require.Error(p.T(), err)
+	assert.ErrorIs(p.T(), err, tangy.ErrPythonPackageNotFound)
+}
+
+func (p *PythonSuite) TestPythonPackageVersionsGetEmptyHref() {
+	details, err := p.tangy.PythonPackageVersionsGet(context.Background(), "", "shelf-reader")
+	require.NoError(p.T(), err)
+	assert.Nil(p.T(), details)
 }
 
 func (p *PythonSuite) TestPythonPackageGetNotFound() {

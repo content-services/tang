@@ -76,11 +76,14 @@ func (p *PythonZest) LookupDomain(name string) (string, error) {
 	return *list.Results[0].PulpHref, nil
 }
 
-func (p *PythonZest) CreateRepository(domain, name, url string, includes []string) (repoHref string, remoteHref string, err error) {
+func (p *PythonZest) CreateRepository(domain, name, url string, includes []string, keepLatestPackages int64) (repoHref string, remoteHref string, err error) {
 	pythonRemote := zest.NewPythonPythonRemote(name, url)
 	policy := zest.POLICY692ENUM_IMMEDIATE
 	pythonRemote.Policy = &policy
 	pythonRemote.Includes = includes
+	if keepLatestPackages > 0 {
+		pythonRemote.KeepLatestPackages = &keepLatestPackages
+	}
 
 	remoteResponse, httpResp, err := p.client.RemotesPythonAPI.RemotesPythonPythonCreate(p.ctx, domain).
 		PythonPythonRemote(*pythonRemote).Execute()

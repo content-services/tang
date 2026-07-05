@@ -478,6 +478,80 @@ func (_c *MockTangy_PythonPackageList_Call) RunAndReturn(run func(ctx context.Co
 	return _c
 }
 
+// PythonPackageVersionsGet provides a mock function for the type MockTangy
+func (_mock *MockTangy) PythonPackageVersionsGet(ctx context.Context, repositoryHref string, nameNormalized string) ([]PythonPackageDetail, error) {
+	ret := _mock.Called(ctx, repositoryHref, nameNormalized)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PythonPackageVersionsGet")
+	}
+
+	var r0 []PythonPackageDetail
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) ([]PythonPackageDetail, error)); ok {
+		return returnFunc(ctx, repositoryHref, nameNormalized)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) []PythonPackageDetail); ok {
+		r0 = returnFunc(ctx, repositoryHref, nameNormalized)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]PythonPackageDetail)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = returnFunc(ctx, repositoryHref, nameNormalized)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTangy_PythonPackageVersionsGet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PythonPackageVersionsGet'
+type MockTangy_PythonPackageVersionsGet_Call struct {
+	*mock.Call
+}
+
+// PythonPackageVersionsGet is a helper method to define mock.On call
+//   - ctx context.Context
+//   - repositoryHref string
+//   - nameNormalized string
+func (_e *MockTangy_Expecter) PythonPackageVersionsGet(ctx any, repositoryHref any, nameNormalized any) *MockTangy_PythonPackageVersionsGet_Call {
+	return &MockTangy_PythonPackageVersionsGet_Call{Call: _e.mock.On("PythonPackageVersionsGet", ctx, repositoryHref, nameNormalized)}
+}
+
+func (_c *MockTangy_PythonPackageVersionsGet_Call) Run(run func(ctx context.Context, repositoryHref string, nameNormalized string)) *MockTangy_PythonPackageVersionsGet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTangy_PythonPackageVersionsGet_Call) Return(pythonPackageDetails []PythonPackageDetail, err error) *MockTangy_PythonPackageVersionsGet_Call {
+	_c.Call.Return(pythonPackageDetails, err)
+	return _c
+}
+
+func (_c *MockTangy_PythonPackageVersionsGet_Call) RunAndReturn(run func(ctx context.Context, repositoryHref string, nameNormalized string) ([]PythonPackageDetail, error)) *MockTangy_PythonPackageVersionsGet_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RpmRepositoryVersionEnvironmentSearch provides a mock function for the type MockTangy
 func (_mock *MockTangy) RpmRepositoryVersionEnvironmentSearch(ctx context.Context, hrefs []string, search string, limit int) ([]RpmEnvironmentSearch, error) {
 	ret := _mock.Called(ctx, hrefs, search, limit)

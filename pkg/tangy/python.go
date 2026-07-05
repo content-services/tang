@@ -304,20 +304,99 @@ func (t *tangyImpl) PythonPackageGet(ctx context.Context, repositoryHref, nameNo
 		return PythonPackageDetail{}, nil
 	}
 
-	conn, err := t.pool.Acquire(ctx)
+	conn, innerUnion, args, err := t.preparePythonPackageQuery(ctx, repositoryHref, nameNormalized)
 	if err != nil {
 		return PythonPackageDetail{}, err
 	}
 	defer conn.Release()
 
+	detailRows, err := fetchPythonPackageDetailRows(ctx, conn, innerUnion, args, version)
+	if err != nil {
+		return PythonPackageDetail{}, err
+	}
+	if len(detailRows) == 0 {
+		return PythonPackageDetail{}, fmt.Errorf("%w: %s@%s", ErrPythonPackageNotFound, nameNormalized, version)
+	}
+
+	row := detailRows[0]
+
+	latestVersions, err := parsePythonLatestVersionsJSON(row.LatestVersionsJSON)
+	if err != nil {
+		return PythonPackageDetail{}, err
+	}
+
+	distributions, err := fetchPythonDistributionRows(ctx, conn, innerUnion, args, 0, 0)
+	if err != nil {
+		return PythonPackageDetail{}, err
+	}
+
+	return pythonPackageDetailFromRow(row, latestVersions, pythonDistributionRowsToItems(distributions)), nil
+}
+
+// PythonPackageVersionsGet returns metadata for every version of a package name_normalized
+// from the latest version of a repository. Metadata for each version is taken from one
+// representative distribution (sdist preferred, then most recently synced).
+func (t *tangyImpl) PythonPackageVersionsGet(ctx context.Context, repositoryHref, nameNormalized string) ([]PythonPackageDetail, error) {
+	if repositoryHref == "" {
+		return nil, nil
+	}
+
+	conn, innerUnion, args, err := t.preparePythonPackageQuery(ctx, repositoryHref, nameNormalized)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	detailRows, err := fetchPythonPackageDetailRows(ctx, conn, innerUnion, args, "")
+	if err != nil {
+		return nil, err
+	}
+	if len(detailRows) == 0 {
+		return nil, fmt.Errorf("%w: %s", ErrPythonPackageNotFound, nameNormalized)
+	}
+
+	latestVersions, err := parsePythonLatestVersionsJSON(detailRows[0].LatestVersionsJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	allDistributions, err := fetchAllPythonDistributionRowsForPackage(ctx, conn, innerUnion, args)
+	if err != nil {
+		return nil, err
+	}
+
+	distributionsByVersion := make(map[string][]PythonDistributionListItem)
+	for _, dist := range allDistributions {
+		distributionsByVersion[dist.Version] = append(
+			distributionsByVersion[dist.Version],
+			pythonDistributionRowToItem(dist),
+		)
+	}
+
+	results := make([]PythonPackageDetail, len(detailRows))
+	for i, row := range detailRows {
+		results[i] = pythonPackageDetailFromRow(row, latestVersions, distributionsByVersion[row.Version])
+	}
+
+	return results, nil
+}
+
+func (t *tangyImpl) preparePythonPackageQuery(ctx context.Context, repositoryHref, nameNormalized string) (*pgxpool.Conn, string, pgx.NamedArgs, error) {
+	conn, err := t.pool.Acquire(ctx)
+	if err != nil {
+		return nil, "", nil, err
+	}
+
 	repoUUID, err := parsePythonRepositoryHref(repositoryHref)
 	if err != nil {
-		return PythonPackageDetail{}, fmt.Errorf("error parsing repository href: %w", err)
+		conn.Release()
+		return nil, "", nil, fmt.Errorf("error parsing repository href: %w", err)
 	}
 
 	latestVersion, err := getLatestPythonRepositoryVersion(ctx, conn, repoUUID)
 	if err != nil {
-		return PythonPackageDetail{}, fmt.Errorf("error getting latest repository version: %w", err)
+		conn.Release()
+		return nil, "", nil, fmt.Errorf("error getting latest repository version: %w", err)
 	}
 
 	repoVerMap := []ParsedRepoVersion{{
@@ -327,11 +406,23 @@ func (t *tangyImpl) PythonPackageGet(ctx context.Context, repositoryHref, nameNo
 
 	args := pgx.NamedArgs{
 		"name_normalized": nameNormalized,
-		"version":         version,
 	}
 	innerUnion, err := contentIdsInVersions(ctx, conn, repoVerMap, &args)
 	if err != nil {
-		return PythonPackageDetail{}, err
+		conn.Release()
+		return nil, "", nil, err
+	}
+
+	return conn, innerUnion, args, nil
+}
+
+func fetchPythonPackageDetailRows(ctx context.Context, conn *pgxpool.Conn, innerUnion string, args pgx.NamedArgs, version string) ([]pythonPackageDetailRow, error) {
+	detailFilter := ""
+	orderBy := "ORDER BY d.version"
+	if version != "" {
+		args["version"] = version
+		detailFilter = "WHERE f.version = @version"
+		orderBy = ""
 	}
 
 	query := `
@@ -365,13 +456,14 @@ func (t *tangyImpl) PythonPackageGet(ctx context.Context, repositoryHref, nameNo
 		),
 		detail AS (
 			SELECT f.*,
-			       MAX(f.pulp_created) OVER () AS last_updated,
+			       MAX(f.pulp_created) OVER (PARTITION BY f.version) AS last_updated,
 			       ROW_NUMBER() OVER (
+			           PARTITION BY f.version
 			           ORDER BY CASE WHEN f.packagetype = 'sdist' THEN 0 ELSE 1 END,
 			                    f.pulp_created DESC
 			       ) AS rn
 			FROM filtered f
-			WHERE f.version = @version
+			` + detailFilter + `
 		)
 		SELECT d.name, d.name_normalized, d.version, d.summary, d.description,
 		       d.description_content_type, d.author, d.author_email,
@@ -381,31 +473,18 @@ func (t *tangyImpl) PythonPackageGet(ctx context.Context, repositoryHref, nameNo
 		       d.last_updated, va.versions, va.latest_versions_json
 		FROM detail d
 		CROSS JOIN version_agg va
-		WHERE d.rn = 1`
+		WHERE d.rn = 1
+		` + orderBy
 
 	rows, err := conn.Query(ctx, query, args)
 	if err != nil {
-		return PythonPackageDetail{}, err
+		return nil, err
 	}
 
-	row, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[pythonPackageDetailRow])
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return PythonPackageDetail{}, fmt.Errorf("%w: %s@%s", ErrPythonPackageNotFound, nameNormalized, version)
-		}
-		return PythonPackageDetail{}, err
-	}
+	return pgx.CollectRows(rows, pgx.RowToStructByName[pythonPackageDetailRow])
+}
 
-	latestVersions, err := parsePythonLatestVersionsJSON(row.LatestVersionsJSON)
-	if err != nil {
-		return PythonPackageDetail{}, err
-	}
-
-	distributions, err := fetchPythonDistributionRows(ctx, conn, innerUnion, args, 0, 0)
-	if err != nil {
-		return PythonPackageDetail{}, err
-	}
-
+func pythonPackageDetailFromRow(row pythonPackageDetailRow, latestVersions []PythonVersionInfo, distributions []PythonDistributionListItem) PythonPackageDetail {
 	return PythonPackageDetail{
 		Name:                   row.Name,
 		NameNormalized:         row.NameNormalized,
@@ -429,8 +508,8 @@ func (t *tangyImpl) PythonPackageGet(ctx context.Context, repositoryHref, nameNo
 		LastUpdated:            row.LastUpdated.Format(time.RFC3339),
 		Versions:               row.Versions,
 		LatestVersions:         latestVersions,
-		Distributions:          pythonDistributionRowsToItems(distributions),
-	}, nil
+		Distributions:          distributions,
+	}
 }
 
 func fetchPythonDistributionRows(ctx context.Context, conn *pgxpool.Conn, innerUnion string, args pgx.NamedArgs, limit, offset int) ([]pythonDistributionRow, error) {
@@ -459,22 +538,44 @@ func fetchPythonDistributionRows(ctx context.Context, conn *pgxpool.Conn, innerU
 	return pgx.CollectRows(rows, pgx.RowToStructByName[pythonDistributionRow])
 }
 
+func pythonDistributionRowToItem(dist pythonDistributionRow) PythonDistributionListItem {
+	return PythonDistributionListItem{
+		Name:           dist.Name,
+		NameNormalized: dist.NameNormalized,
+		Version:        dist.Version,
+		Filename:       dist.Filename,
+		PackageType:    dist.PackageType,
+		PythonVersion:  dist.PythonVersion,
+		Sha256:         dist.Sha256,
+		Size:           dist.Size,
+		CreatedAt:      dist.CreatedAt.Format(time.RFC3339),
+	}
+}
+
 func pythonDistributionRowsToItems(distributions []pythonDistributionRow) []PythonDistributionListItem {
 	results := make([]PythonDistributionListItem, len(distributions))
 	for i, dist := range distributions {
-		results[i] = PythonDistributionListItem{
-			Name:           dist.Name,
-			NameNormalized: dist.NameNormalized,
-			Version:        dist.Version,
-			Filename:       dist.Filename,
-			PackageType:    dist.PackageType,
-			PythonVersion:  dist.PythonVersion,
-			Sha256:         dist.Sha256,
-			Size:           dist.Size,
-			CreatedAt:      dist.CreatedAt.Format(time.RFC3339),
-		}
+		results[i] = pythonDistributionRowToItem(dist)
 	}
 	return results
+}
+
+func fetchAllPythonDistributionRowsForPackage(ctx context.Context, conn *pgxpool.Conn, innerUnion string, args pgx.NamedArgs) ([]pythonDistributionRow, error) {
+	query := `
+		SELECT rp.name, rp.name_normalized, rp.version, rp.filename, rp.packagetype,
+		       rp.python_version, rp.sha256, rp.size, cc.pulp_created AS created_at
+		FROM python_pythonpackagecontent rp
+		INNER JOIN core_content cc ON rp.content_ptr_id = cc.pulp_id
+	` + innerUnion + `
+		AND rp.name_normalized = @name_normalized
+		ORDER BY rp.version, cc.pulp_created DESC`
+
+	rows, err := conn.Query(ctx, query, args)
+	if err != nil {
+		return nil, err
+	}
+
+	return pgx.CollectRows(rows, pgx.RowToStructByName[pythonDistributionRow])
 }
 
 func parsePythonLatestVersionsJSON(data []byte) ([]PythonVersionInfo, error) {

@@ -249,6 +249,47 @@ func TestMockTangyPythonPackageGet(t *testing.T) {
 	assert.Equal(t, expected, got)
 }
 
+func TestMockTangyPythonPackageVersionsGet(t *testing.T) {
+	t.Parallel()
+
+	mockTangy := NewMockTangy(t)
+	ctx := context.Background()
+	repoHref := "/api/pulp/default/api/v3/repositories/python/python/018c1c95-4281-76eb-b277-842cbad524f4/"
+
+	expected := []PythonPackageDetail{
+		{
+			Name:           "Django",
+			NameNormalized: "django",
+			Version:        "4.2",
+			Summary:        "A high-level Python web framework",
+			LastUpdated:    "2023-01-01T12:00:00Z",
+			Versions:       []string{"4.2", "5.0"},
+			LatestVersions: []PythonVersionInfo{
+				{Version: "4.2", CreatedAt: "2023-01-01T12:00:00Z"},
+				{Version: "5.0", CreatedAt: "2024-01-01T12:00:00Z"},
+			},
+		},
+		{
+			Name:           "Django",
+			NameNormalized: "django",
+			Version:        "5.0",
+			Summary:        "A high-level Python web framework",
+			LastUpdated:    "2024-01-01T12:00:00Z",
+			Versions:       []string{"4.2", "5.0"},
+			LatestVersions: []PythonVersionInfo{
+				{Version: "4.2", CreatedAt: "2023-01-01T12:00:00Z"},
+				{Version: "5.0", CreatedAt: "2024-01-01T12:00:00Z"},
+			},
+		},
+	}
+
+	mockTangy.On("PythonPackageVersionsGet", ctx, repoHref, "django").Return(expected, nil)
+
+	got, err := mockTangy.PythonPackageVersionsGet(ctx, repoHref, "django")
+	require.NoError(t, err)
+	assert.Equal(t, expected, got)
+}
+
 func TestParsePythonJSONStringSlice(t *testing.T) {
 	t.Parallel()
 
