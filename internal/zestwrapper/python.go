@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/content-services/tang/internal/config"
-	zest "github.com/content-services/zest/release/v2024"
+	zest "github.com/content-services/zest/release/v2026"
 )
 
 func NewPythonZest(ctx context.Context, server config.Server) PythonZest {
@@ -113,7 +113,7 @@ func (p *PythonZest) SyncPythonRepository(repoHref, remoteHref string) (string, 
 	mirror := true
 	syncURL.SetMirror(mirror)
 
-	resp, httpResp, err := p.client.RepositoriesPythonAPI.RepositoriesPythonPythonSync(p.ctx, repoHref).
+	resp, httpResp, err := p.client.RepositoriesPythonAPI.RepositoriesPythonPythonSync(p.ctx, normalizePulpHref(repoHref)).
 		RepositorySyncURL(*syncURL).Execute()
 	if httpResp != nil {
 		defer httpResp.Body.Close()

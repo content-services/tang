@@ -505,7 +505,7 @@ func parseRepositoryVersionHrefsMap(hrefs []string) (mapping []ParsedRepoVersion
 	// /api/pulp/e1c6bee3/api/v3/repositories/rpm/rpm/018c1c95-4281-76eb-b277-842cbad524f4/versions/1/
 	for _, href := range hrefs {
 		splitHref := strings.Split(href, "/")
-		if len(splitHref) < 10 {
+		if len(splitHref) < 12 {
 			return mapping, fmt.Errorf("%v is not a valid href", splitHref)
 		}
 		id := splitHref[9]
