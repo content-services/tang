@@ -188,6 +188,8 @@ func (p *PythonSuite) TestPythonPackageGet() {
 	assert.Equal(p.T(), "shelf-reader", detail.NameNormalized)
 	assert.Equal(p.T(), "0.1", detail.Version)
 	assert.NotEmpty(p.T(), detail.Name)
+	assert.Equal(p.T(), "Austin Macdonald", detail.Author)
+	assert.Equal(p.T(), "asmacdo@gmail.com", detail.AuthorEmail)
 	assert.NotEmpty(p.T(), detail.LastUpdated)
 	assert.Contains(p.T(), detail.Versions, "0.1")
 	require.NotEmpty(p.T(), detail.LatestVersions)
@@ -243,6 +245,8 @@ func (p *PythonSuite) TestPythonPackageVersionsGet() {
 		assert.NotEmpty(p.T(), detail.Name)
 		assert.NotEmpty(p.T(), detail.Version)
 		assert.NotEmpty(p.T(), detail.LastUpdated)
+		assert.Equal(p.T(), "Kim Davies", detail.Author)
+		assert.Equal(p.T(), "Kim Davies <kim+pypi@gumleaf.org>", detail.AuthorEmail)
 		require.NotEmpty(p.T(), detail.Distributions)
 
 		for _, dist := range detail.Distributions {

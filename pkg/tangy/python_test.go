@@ -290,6 +290,56 @@ func TestMockTangyPythonPackageVersionsGet(t *testing.T) {
 	assert.Equal(t, expected, got)
 }
 
+func TestParsePythonAuthor(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		author      string
+		authorEmail string
+		want        string
+	}{
+		{
+			name:        "author already set",
+			author:      "Django Software Foundation",
+			authorEmail: "Django Software Foundation <foundation@djangoproject.com>",
+			want:        "Django Software Foundation",
+		},
+		{
+			name:        "extract name from email",
+			author:      "",
+			authorEmail: "Google LLC <googleapis-packages@google.com>",
+			want:        "Google LLC",
+		},
+		{
+			name:        "email only",
+			author:      "",
+			authorEmail: "googleapis-packages@google.com",
+			want:        "",
+		},
+		{
+			name:        "both empty",
+			author:      "",
+			authorEmail: "",
+			want:        "",
+		},
+		{
+			name:        "whitespace author extracts from email",
+			author:      "   ",
+			authorEmail: "Google LLC <googleapis-packages@google.com>",
+			want:        "Google LLC",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, parsePythonAuthor(tt.author, tt.authorEmail))
+		})
+	}
+}
+
 func TestParsePythonJSONStringSlice(t *testing.T) {
 	t.Parallel()
 

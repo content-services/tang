@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/mail"
 	"strings"
 	"time"
 
@@ -492,7 +493,7 @@ func pythonPackageDetailFromRow(row pythonPackageDetailRow, latestVersions []Pyt
 		Summary:                row.Summary,
 		Description:            row.Description,
 		DescriptionContentType: row.DescriptionContentType,
-		Author:                 row.Author,
+		Author:                 parsePythonAuthor(row.Author, row.AuthorEmail),
 		AuthorEmail:            row.AuthorEmail,
 		Maintainer:             row.Maintainer,
 		MaintainerEmail:        row.MaintainerEmail,
@@ -599,6 +600,24 @@ func parsePythonLatestVersionsJSON(data []byte) ([]PythonVersionInfo, error) {
 		}
 	}
 	return latestVersions, nil
+}
+
+func parsePythonAuthor(author, authorEmail string) string {
+	if strings.TrimSpace(author) != "" {
+		return author
+	}
+
+	authorEmail = strings.TrimSpace(authorEmail)
+	if authorEmail == "" {
+		return author
+	}
+
+	addr, err := mail.ParseAddress(authorEmail)
+	if err != nil || addr.Name == "" {
+		return author
+	}
+
+	return addr.Name
 }
 
 func parsePythonJSONStringSlice(data []byte) []string {
