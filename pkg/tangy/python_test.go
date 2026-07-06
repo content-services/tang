@@ -340,6 +340,48 @@ func TestParsePythonAuthor(t *testing.T) {
 	}
 }
 
+func TestMockTangyPythonPackageVersionsGetEmptyNameNormalized(t *testing.T) {
+	t.Parallel()
+
+	mockTangy := NewMockTangy(t)
+	ctx := context.Background()
+	repoHref := "/api/pulp/default/api/v3/repositories/python/python/018c1c95-4281-76eb-b277-842cbad524f4/"
+
+	// Expected result when calling with empty nameNormalized - should return multiple packages
+	expected := []PythonPackageDetail{
+		{
+			Name:           "Django",
+			NameNormalized: "django",
+			Version:        "4.2",
+			Summary:        "A high-level Python web framework",
+			LastUpdated:    "2023-01-01T12:00:00Z",
+			Versions:       []string{"4.2"},
+			LatestVersions: []PythonVersionInfo{
+				{Version: "4.2", CreatedAt: "2023-01-01T12:00:00Z"},
+			},
+		},
+		{
+			Name:           "Requests",
+			NameNormalized: "requests",
+			Version:        "2.31.0",
+			Summary:        "Python HTTP for Humans",
+			LastUpdated:    "2023-05-01T12:00:00Z",
+			Versions:       []string{"2.31.0"},
+			LatestVersions: []PythonVersionInfo{
+				{Version: "2.31.0", CreatedAt: "2023-05-01T12:00:00Z"},
+			},
+		},
+	}
+
+	// Mock the call with empty string for nameNormalized
+	mockTangy.On("PythonPackageVersionsGet", ctx, repoHref, "").Return(expected, nil)
+
+	got, err := mockTangy.PythonPackageVersionsGet(ctx, repoHref, "")
+	require.NoError(t, err)
+	assert.Equal(t, expected, got)
+	assert.Len(t, got, 2, "Should return multiple packages when nameNormalized is empty")
+}
+
 func TestParsePythonJSONStringSlice(t *testing.T) {
 	t.Parallel()
 

@@ -334,9 +334,10 @@ func (t *tangyImpl) PythonPackageGet(ctx context.Context, repositoryHref, nameNo
 	return pythonPackageDetailFromRow(row, latestVersions, pythonDistributionRowsToItems(distributions)), nil
 }
 
-// PythonPackageVersionsGet returns metadata for every version of a package name_normalized
+// PythonPackageVersionsGet returns metadata for every version of a package (optionally filtered by name_normalized)
 // from the latest version of a repository. Metadata for each version is taken from one
 // representative distribution (sdist preferred, then most recently synced).
+// If nameNormalized is empty, returns all packages in the repository.
 func (t *tangyImpl) PythonPackageVersionsGet(ctx context.Context, repositoryHref, nameNormalized string) ([]PythonPackageDetail, error) {
 	if repositoryHref == "" {
 		return nil, nil
@@ -353,7 +354,10 @@ func (t *tangyImpl) PythonPackageVersionsGet(ctx context.Context, repositoryHref
 		return nil, err
 	}
 	if len(detailRows) == 0 {
-		return nil, fmt.Errorf("%w: %s", ErrPythonPackageNotFound, nameNormalized)
+		if nameNormalized != "" {
+			return nil, fmt.Errorf("%w: %s", ErrPythonPackageNotFound, nameNormalized)
+		}
+		return []PythonPackageDetail{}, nil
 	}
 
 	latestVersions, err := parsePythonLatestVersionsJSON(detailRows[0].LatestVersionsJSON)
@@ -405,9 +409,11 @@ func (t *tangyImpl) preparePythonPackageQuery(ctx context.Context, repositoryHre
 		Version:        latestVersion,
 	}}
 
-	args := pgx.NamedArgs{
-		"name_normalized": nameNormalized,
+	args := pgx.NamedArgs{}
+	if nameNormalized != "" {
+		args["name_normalized"] = nameNormalized
 	}
+
 	innerUnion, err := contentIdsInVersions(ctx, conn, repoVerMap, &args)
 	if err != nil {
 		conn.Release()
@@ -426,6 +432,12 @@ func fetchPythonPackageDetailRows(ctx context.Context, conn *pgxpool.Conn, inner
 		orderBy = ""
 	}
 
+	// Build WHERE clause conditionally based on provided parameters
+	var whereClause string
+	if _, hasNameNormalized := args["name_normalized"]; hasNameNormalized {
+		whereClause = "\n\t\t\tAND rp.name_normalized = @name_normalized"
+	}
+
 	query := `
 		WITH filtered AS (
 			SELECT rp.name, rp.name_normalized, rp.version, rp.summary, rp.description,
@@ -436,8 +448,7 @@ func fetchPythonPackageDetailRows(ctx context.Context, conn *pgxpool.Conn, inner
 			       rp.packagetype, cc.pulp_created
 			FROM python_pythonpackagecontent rp
 			INNER JOIN core_content cc ON rp.content_ptr_id = cc.pulp_id
-	` + innerUnion + `
-			AND rp.name_normalized = @name_normalized
+	` + innerUnion + whereClause + `
 		),
 		version_agg AS (
 			SELECT
@@ -562,13 +573,18 @@ func pythonDistributionRowsToItems(distributions []pythonDistributionRow) []Pyth
 }
 
 func fetchAllPythonDistributionRowsForPackage(ctx context.Context, conn *pgxpool.Conn, innerUnion string, args pgx.NamedArgs) ([]pythonDistributionRow, error) {
+	// Build WHERE clause conditionally based on provided parameters
+	var whereClause string
+	if _, hasNameNormalized := args["name_normalized"]; hasNameNormalized {
+		whereClause = "\n\t\tAND rp.name_normalized = @name_normalized"
+	}
+
 	query := `
 		SELECT rp.name, rp.name_normalized, rp.version, rp.filename, rp.packagetype,
 		       rp.python_version, rp.sha256, rp.size, cc.pulp_created AS created_at
 		FROM python_pythonpackagecontent rp
 		INNER JOIN core_content cc ON rp.content_ptr_id = cc.pulp_id
-	` + innerUnion + `
-		AND rp.name_normalized = @name_normalized
+	` + innerUnion + whereClause + `
 		ORDER BY rp.version, cc.pulp_created DESC`
 
 	rows, err := conn.Query(ctx, query, args)

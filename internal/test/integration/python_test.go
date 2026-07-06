@@ -2,6 +2,8 @@ package integration
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
 	"testing"
 
 	"github.com/content-services/tang/internal/config"
@@ -276,6 +278,47 @@ func (p *PythonSuite) TestPythonPackageVersionsGetEmptyHref() {
 	details, err := p.tangy.PythonPackageVersionsGet(context.Background(), "", "shelf-reader")
 	require.NoError(p.T(), err)
 	assert.Nil(p.T(), details)
+}
+
+func (p *PythonSuite) TestPythonPackageVersionsGetEmptyNameNormalized() {
+	repoHref, remoteHref, err := p.client.CreateRepository(
+		p.domainName,
+		fmt.Sprintf("%s-%v", testPythonMultiVersionRepoName, rand.Int()),
+		testPythonRepoURL,
+		[]string{testPythonIncludes, testPythonMultiVersionPackage},
+		0,
+	)
+	require.NoError(p.T(), err)
+
+	syncTask, err := p.client.SyncPythonRepository(repoHref, remoteHref)
+	require.NoError(p.T(), err)
+
+	_, err = p.client.PollTask(syncTask)
+	require.NoError(p.T(), err)
+
+	// Call with empty nameNormalized - should return all packages in the repository
+	details, err := p.tangy.PythonPackageVersionsGet(
+		context.Background(),
+		repoHref,
+		"",
+	)
+	require.NoError(p.T(), err)
+	require.NotEmpty(p.T(), details, "Should return packages when nameNormalized is empty")
+
+	// Verify that we got actual package data back
+	for _, detail := range details {
+		assert.NotEmpty(p.T(), detail.NameNormalized)
+		assert.NotEmpty(p.T(), detail.Name)
+		assert.NotEmpty(p.T(), detail.Version)
+	}
+
+	singleDetails, err := p.tangy.PythonPackageVersionsGet(
+		context.Background(),
+		repoHref,
+		testPythonMultiVersionPackage,
+	)
+	assert.NoError(p.T(), err)
+	assert.Greater(p.T(), len(details), len(singleDetails))
 }
 
 func (p *PythonSuite) TestPythonPackageGetNotFound() {
