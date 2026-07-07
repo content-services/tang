@@ -36,6 +36,25 @@ type PythonPackageListFilters struct {
 	Search string
 }
 
+type PythonBuildListItem struct {
+	Name           string `json:"name"`
+	NameNormalized string `json:"name_normalized"`
+	Version        string `json:"version"`
+	CreatedAt      string `json:"created_at"`
+}
+
+type PythonBuildListResponse struct {
+	Results []PythonBuildListItem `json:"results"`
+	Total   int                   `json:"total"`
+	Limit   int                   `json:"limit"`
+	Offset  int                   `json:"offset"`
+}
+
+type PythonRepositoryMetrics struct {
+	PackageCount int `json:"package_count"`
+	BuildCount   int `json:"build_count"`
+}
+
 type PythonDistributionListItem struct {
 	Name           string `json:"name"`
 	NameNormalized string `json:"name_normalized"`
@@ -83,11 +102,21 @@ type PythonPackageDetail struct {
 	Distributions          []PythonDistributionListItem `json:"distributions"`
 }
 
-var ErrPythonPackageNotFound = errors.New("python package not found")
+var (
+	ErrPythonPackageNotFound        = errors.New("python package not found")
+	ErrPythonNameNormalizedRequired = errors.New("name_normalized is required")
+)
 
 type pythonPackageVersionRow struct {
 	NameNormalized string
 	Name           string
+	Version        string
+	CreatedAt      time.Time
+}
+
+type pythonBuildRow struct {
+	Name           string
+	NameNormalized string
 	Version        string
 	CreatedAt      time.Time
 }
@@ -334,13 +363,15 @@ func (t *tangyImpl) PythonPackageGet(ctx context.Context, repositoryHref, nameNo
 	return pythonPackageDetailFromRow(row, latestVersions, pythonDistributionRowsToItems(distributions)), nil
 }
 
-// PythonPackageVersionsGet returns metadata for every version of a package (optionally filtered by name_normalized)
-// from the latest version of a repository. Metadata for each version is taken from one
-// representative distribution (sdist preferred, then most recently synced).
-// If nameNormalized is empty, returns all packages in the repository.
+// PythonPackageVersionsGet returns metadata for every version of a package from the latest version
+// of a repository. Metadata for each version is taken from one representative distribution
+// (sdist preferred, then most recently synced).
 func (t *tangyImpl) PythonPackageVersionsGet(ctx context.Context, repositoryHref, nameNormalized string) ([]PythonPackageDetail, error) {
 	if repositoryHref == "" {
 		return nil, nil
+	}
+	if nameNormalized == "" {
+		return nil, ErrPythonNameNormalizedRequired
 	}
 
 	conn, innerUnion, args, err := t.preparePythonPackageQuery(ctx, repositoryHref, nameNormalized)
@@ -354,10 +385,7 @@ func (t *tangyImpl) PythonPackageVersionsGet(ctx context.Context, repositoryHref
 		return nil, err
 	}
 	if len(detailRows) == 0 {
-		if nameNormalized != "" {
-			return nil, fmt.Errorf("%w: %s", ErrPythonPackageNotFound, nameNormalized)
-		}
-		return []PythonPackageDetail{}, nil
+		return nil, fmt.Errorf("%w: %s", ErrPythonPackageNotFound, nameNormalized)
 	}
 
 	latestVersions, err := parsePythonLatestVersionsJSON(detailRows[0].LatestVersionsJSON)
@@ -384,6 +412,169 @@ func (t *tangyImpl) PythonPackageVersionsGet(ctx context.Context, repositoryHref
 	}
 
 	return results, nil
+}
+
+// PythonBuildList lists all Python package builds (name_normalized + version pairs), optionally
+// filtered by name_normalized and version, from the latest version of a repository.
+func (t *tangyImpl) PythonBuildList(ctx context.Context, repositoryHref, nameNormalized, version string, pageOpts PageOptions) (PythonBuildListResponse, error) {
+	if repositoryHref == "" {
+		return PythonBuildListResponse{}, nil
+	}
+
+	conn, err := t.pool.Acquire(ctx)
+	if err != nil {
+		return PythonBuildListResponse{}, err
+	}
+	defer conn.Release()
+
+	if pageOpts.Limit == 0 {
+		pageOpts.Limit = DefaultLimit
+	}
+
+	repoUUID, err := parsePythonRepositoryHref(repositoryHref)
+	if err != nil {
+		return PythonBuildListResponse{}, fmt.Errorf("error parsing repository href: %w", err)
+	}
+
+	latestVersion, err := getLatestPythonRepositoryVersion(ctx, conn, repoUUID)
+	if err != nil {
+		return PythonBuildListResponse{}, fmt.Errorf("error getting latest repository version: %w", err)
+	}
+
+	repoVerMap := []ParsedRepoVersion{{
+		RepositoryUUID: repoUUID,
+		Version:        latestVersion,
+	}}
+
+	args := pgx.NamedArgs{}
+
+	var whereClause string
+	if nameNormalized != "" {
+		args["name_normalized"] = nameNormalized
+		whereClause += "\n\t\tAND rp.name_normalized = @name_normalized"
+	}
+	if version != "" {
+		args["version"] = version
+		whereClause += "\n\t\tAND rp.version = @version"
+	}
+
+	innerUnion, err := contentIdsInVersions(ctx, conn, repoVerMap, &args)
+	if err != nil {
+		return PythonBuildListResponse{}, err
+	}
+
+	buildFrom := `
+		FROM python_pythonpackagecontent rp
+		INNER JOIN core_content cc ON rp.content_ptr_id = cc.pulp_id
+	` + innerUnion + whereClause
+
+	countQuery := `
+		SELECT COUNT(*)
+		FROM (
+			SELECT rp.name_normalized, rp.version
+		` + buildFrom + `
+			GROUP BY rp.name_normalized, rp.version
+		) builds`
+
+	var countTotal int
+	err = conn.QueryRow(ctx, countQuery, args).Scan(&countTotal)
+	if err != nil {
+		return PythonBuildListResponse{}, err
+	}
+
+	args["limit"] = pageOpts.Limit
+	args["offset"] = pageOpts.Offset
+
+	query := `
+		SELECT MIN(rp.name) AS name, rp.name_normalized, rp.version, MAX(cc.pulp_created) AS created_at
+	` + buildFrom + `
+		GROUP BY rp.name_normalized, rp.version
+		ORDER BY created_at DESC
+		LIMIT @limit OFFSET @offset`
+
+	rows, err := conn.Query(ctx, query, args)
+	if err != nil {
+		return PythonBuildListResponse{}, err
+	}
+
+	buildRows, err := pgx.CollectRows(rows, pgx.RowToStructByName[pythonBuildRow])
+	if err != nil {
+		return PythonBuildListResponse{}, err
+	}
+
+	results := make([]PythonBuildListItem, len(buildRows))
+	for i, row := range buildRows {
+		results[i] = PythonBuildListItem{
+			Name:           row.Name,
+			NameNormalized: row.NameNormalized,
+			Version:        row.Version,
+			CreatedAt:      row.CreatedAt.Format(time.RFC3339),
+		}
+	}
+
+	return PythonBuildListResponse{
+		Results: results,
+		Total:   countTotal,
+		Limit:   pageOpts.Limit,
+		Offset:  pageOpts.Offset,
+	}, nil
+}
+
+// PythonRepositoryMetrics returns package and build counts for the latest version of a repository.
+func (t *tangyImpl) PythonRepositoryMetrics(ctx context.Context, repositoryHref string) (PythonRepositoryMetrics, error) {
+	if repositoryHref == "" {
+		return PythonRepositoryMetrics{}, nil
+	}
+
+	conn, err := t.pool.Acquire(ctx)
+	if err != nil {
+		return PythonRepositoryMetrics{}, err
+	}
+	defer conn.Release()
+
+	repoUUID, err := parsePythonRepositoryHref(repositoryHref)
+	if err != nil {
+		return PythonRepositoryMetrics{}, fmt.Errorf("error parsing repository href: %w", err)
+	}
+
+	latestVersion, err := getLatestPythonRepositoryVersion(ctx, conn, repoUUID)
+	if err != nil {
+		return PythonRepositoryMetrics{}, fmt.Errorf("error getting latest repository version: %w", err)
+	}
+
+	repoVerMap := []ParsedRepoVersion{{
+		RepositoryUUID: repoUUID,
+		Version:        latestVersion,
+	}}
+
+	args := pgx.NamedArgs{}
+	innerUnion, err := contentIdsInVersions(ctx, conn, repoVerMap, &args)
+	if err != nil {
+		return PythonRepositoryMetrics{}, err
+	}
+
+	contentFrom := `
+		FROM python_pythonpackagecontent rp
+	` + innerUnion
+
+	metricsQuery := `
+		SELECT
+			(SELECT COUNT(DISTINCT rp.name_normalized)
+			` + contentFrom + `) AS package_count,
+			(SELECT COUNT(*)
+			 FROM (
+				SELECT 1
+				` + contentFrom + `
+				GROUP BY rp.name_normalized, rp.version
+			 ) builds) AS build_count`
+
+	var metrics PythonRepositoryMetrics
+	err = conn.QueryRow(ctx, metricsQuery, args).Scan(&metrics.PackageCount, &metrics.BuildCount)
+	if err != nil {
+		return PythonRepositoryMetrics{}, err
+	}
+
+	return metrics, nil
 }
 
 func (t *tangyImpl) preparePythonPackageQuery(ctx context.Context, repositoryHref, nameNormalized string) (*pgxpool.Conn, string, pgx.NamedArgs, error) {

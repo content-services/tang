@@ -347,39 +347,59 @@ func TestMockTangyPythonPackageVersionsGetEmptyNameNormalized(t *testing.T) {
 	ctx := context.Background()
 	repoHref := "/api/pulp/default/api/v3/repositories/python/python/018c1c95-4281-76eb-b277-842cbad524f4/"
 
-	// Expected result when calling with empty nameNormalized - should return multiple packages
-	expected := []PythonPackageDetail{
-		{
-			Name:           "Django",
-			NameNormalized: "django",
-			Version:        "4.2",
-			Summary:        "A high-level Python web framework",
-			LastUpdated:    "2023-01-01T12:00:00Z",
-			Versions:       []string{"4.2"},
-			LatestVersions: []PythonVersionInfo{
-				{Version: "4.2", CreatedAt: "2023-01-01T12:00:00Z"},
-			},
-		},
-		{
-			Name:           "Requests",
-			NameNormalized: "requests",
-			Version:        "2.31.0",
-			Summary:        "Python HTTP for Humans",
-			LastUpdated:    "2023-05-01T12:00:00Z",
-			Versions:       []string{"2.31.0"},
-			LatestVersions: []PythonVersionInfo{
-				{Version: "2.31.0", CreatedAt: "2023-05-01T12:00:00Z"},
-			},
-		},
-	}
-
-	// Mock the call with empty string for nameNormalized
-	mockTangy.On("PythonPackageVersionsGet", ctx, repoHref, "").Return(expected, nil)
+	mockTangy.On("PythonPackageVersionsGet", ctx, repoHref, "").Return(nil, ErrPythonNameNormalizedRequired)
 
 	got, err := mockTangy.PythonPackageVersionsGet(ctx, repoHref, "")
+	require.ErrorIs(t, err, ErrPythonNameNormalizedRequired)
+	assert.Nil(t, got)
+}
+
+func TestMockTangyPythonBuildList(t *testing.T) {
+	t.Parallel()
+
+	mockTangy := NewMockTangy(t)
+	ctx := context.Background()
+	repoHref := "/api/pulp/default/api/v3/repositories/python/python/018c1c95-4281-76eb-b277-842cbad524f4/"
+	pageOpts := PageOptions{Offset: 0, Limit: 10}
+
+	expected := PythonBuildListResponse{
+		Results: []PythonBuildListItem{
+			{
+				Name:           "Django",
+				NameNormalized: "django",
+				Version:        "5.0",
+				CreatedAt:      "2024-01-01T12:00:00Z",
+			},
+		},
+		Total:  1,
+		Limit:  10,
+		Offset: 0,
+	}
+
+	mockTangy.On("PythonBuildList", ctx, repoHref, "", "", pageOpts).Return(expected, nil)
+
+	got, err := mockTangy.PythonBuildList(ctx, repoHref, "", "", pageOpts)
 	require.NoError(t, err)
 	assert.Equal(t, expected, got)
-	assert.Len(t, got, 2, "Should return multiple packages when nameNormalized is empty")
+}
+
+func TestMockTangyPythonRepositoryMetrics(t *testing.T) {
+	t.Parallel()
+
+	mockTangy := NewMockTangy(t)
+	ctx := context.Background()
+	repoHref := "/api/pulp/default/api/v3/repositories/python/python/018c1c95-4281-76eb-b277-842cbad524f4/"
+
+	expected := PythonRepositoryMetrics{
+		PackageCount: 10,
+		BuildCount:   25,
+	}
+
+	mockTangy.On("PythonRepositoryMetrics", ctx, repoHref).Return(expected, nil)
+
+	got, err := mockTangy.PythonRepositoryMetrics(ctx, repoHref)
+	require.NoError(t, err)
+	assert.Equal(t, expected, got)
 }
 
 func TestParsePythonJSONStringSlice(t *testing.T) {
