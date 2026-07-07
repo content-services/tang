@@ -2,8 +2,6 @@ package integration
 
 import (
 	"context"
-	"fmt"
-	"math/rand"
 	"testing"
 
 	"github.com/content-services/tang/internal/config"
@@ -281,44 +279,58 @@ func (p *PythonSuite) TestPythonPackageVersionsGetEmptyHref() {
 }
 
 func (p *PythonSuite) TestPythonPackageVersionsGetEmptyNameNormalized() {
-	repoHref, remoteHref, err := p.client.CreateRepository(
-		p.domainName,
-		fmt.Sprintf("%s-%v", testPythonMultiVersionRepoName, rand.Int()),
-		testPythonRepoURL,
-		[]string{testPythonIncludes, testPythonMultiVersionPackage},
-		0,
-	)
-	require.NoError(p.T(), err)
-
-	syncTask, err := p.client.SyncPythonRepository(repoHref, remoteHref)
-	require.NoError(p.T(), err)
-
-	_, err = p.client.PollTask(syncTask)
-	require.NoError(p.T(), err)
-
-	// Call with empty nameNormalized - should return all packages in the repository
-	details, err := p.tangy.PythonPackageVersionsGet(
+	_, err := p.tangy.PythonPackageVersionsGet(
 		context.Background(),
-		repoHref,
+		p.repositoryHref,
 		"",
 	)
-	require.NoError(p.T(), err)
-	require.NotEmpty(p.T(), details, "Should return packages when nameNormalized is empty")
+	require.Error(p.T(), err)
+	assert.ErrorIs(p.T(), err, tangy.ErrPythonNameNormalizedRequired)
+}
 
-	// Verify that we got actual package data back
-	for _, detail := range details {
-		assert.NotEmpty(p.T(), detail.NameNormalized)
-		assert.NotEmpty(p.T(), detail.Name)
-		assert.NotEmpty(p.T(), detail.Version)
-	}
-
-	singleDetails, err := p.tangy.PythonPackageVersionsGet(
+func (p *PythonSuite) TestPythonBuildList() {
+	response, err := p.tangy.PythonBuildList(
 		context.Background(),
-		repoHref,
-		testPythonMultiVersionPackage,
+		p.repositoryHref,
+		"",
+		"",
+		tangy.PageOptions{Offset: 0, Limit: 10},
 	)
-	assert.NoError(p.T(), err)
-	assert.Greater(p.T(), len(details), len(singleDetails))
+	require.NoError(p.T(), err)
+	require.NotEmpty(p.T(), response.Results)
+	assert.Equal(p.T(), 1, response.Total)
+	assert.Equal(p.T(), 10, response.Limit)
+
+	build := response.Results[0]
+	assert.Equal(p.T(), "shelf-reader", build.NameNormalized)
+	assert.Equal(p.T(), "0.1", build.Version)
+	assert.NotEmpty(p.T(), build.Name)
+	assert.NotEmpty(p.T(), build.CreatedAt)
+
+	filtered, err := p.tangy.PythonBuildList(
+		context.Background(),
+		p.repositoryHref,
+		"shelf-reader",
+		"0.1",
+		tangy.PageOptions{Offset: 0, Limit: 10},
+	)
+	require.NoError(p.T(), err)
+	require.Len(p.T(), filtered.Results, 1)
+	assert.Equal(p.T(), 1, filtered.Total)
+}
+
+func (p *PythonSuite) TestPythonRepositoryMetrics() {
+	metrics, err := p.tangy.PythonRepositoryMetrics(context.Background(), p.repositoryHref)
+	require.NoError(p.T(), err)
+	assert.Equal(p.T(), 1, metrics.PackageCount)
+	assert.Equal(p.T(), 1, metrics.BuildCount)
+}
+
+func (p *PythonSuite) TestPythonRepositoryMetricsEmptyHref() {
+	metrics, err := p.tangy.PythonRepositoryMetrics(context.Background(), "")
+	require.NoError(p.T(), err)
+	assert.Zero(p.T(), metrics.PackageCount)
+	assert.Zero(p.T(), metrics.BuildCount)
 }
 
 func (p *PythonSuite) TestPythonPackageGetNotFound() {

@@ -238,6 +238,156 @@ func (_c *MockTangy_MavenPackageList_Call) RunAndReturn(run func(ctx context.Con
 	return _c
 }
 
+// MavenRepositoryMetrics provides a mock function for the type MockTangy
+func (_mock *MockTangy) MavenRepositoryMetrics(ctx context.Context, repositoryHref string) (MavenRepositoryMetrics, error) {
+	ret := _mock.Called(ctx, repositoryHref)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MavenRepositoryMetrics")
+	}
+
+	var r0 MavenRepositoryMetrics
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (MavenRepositoryMetrics, error)); ok {
+		return returnFunc(ctx, repositoryHref)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) MavenRepositoryMetrics); ok {
+		r0 = returnFunc(ctx, repositoryHref)
+	} else {
+		r0 = ret.Get(0).(MavenRepositoryMetrics)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, repositoryHref)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTangy_MavenRepositoryMetrics_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MavenRepositoryMetrics'
+type MockTangy_MavenRepositoryMetrics_Call struct {
+	*mock.Call
+}
+
+// MavenRepositoryMetrics is a helper method to define mock.On call
+//   - ctx context.Context
+//   - repositoryHref string
+func (_e *MockTangy_Expecter) MavenRepositoryMetrics(ctx any, repositoryHref any) *MockTangy_MavenRepositoryMetrics_Call {
+	return &MockTangy_MavenRepositoryMetrics_Call{Call: _e.mock.On("MavenRepositoryMetrics", ctx, repositoryHref)}
+}
+
+func (_c *MockTangy_MavenRepositoryMetrics_Call) Run(run func(ctx context.Context, repositoryHref string)) *MockTangy_MavenRepositoryMetrics_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTangy_MavenRepositoryMetrics_Call) Return(mavenRepositoryMetrics MavenRepositoryMetrics, err error) *MockTangy_MavenRepositoryMetrics_Call {
+	_c.Call.Return(mavenRepositoryMetrics, err)
+	return _c
+}
+
+func (_c *MockTangy_MavenRepositoryMetrics_Call) RunAndReturn(run func(ctx context.Context, repositoryHref string) (MavenRepositoryMetrics, error)) *MockTangy_MavenRepositoryMetrics_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PythonBuildList provides a mock function for the type MockTangy
+func (_mock *MockTangy) PythonBuildList(ctx context.Context, repositoryHref string, nameNormalized string, version string, pageOpts PageOptions) (PythonBuildListResponse, error) {
+	ret := _mock.Called(ctx, repositoryHref, nameNormalized, version, pageOpts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PythonBuildList")
+	}
+
+	var r0 PythonBuildListResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, PageOptions) (PythonBuildListResponse, error)); ok {
+		return returnFunc(ctx, repositoryHref, nameNormalized, version, pageOpts)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, PageOptions) PythonBuildListResponse); ok {
+		r0 = returnFunc(ctx, repositoryHref, nameNormalized, version, pageOpts)
+	} else {
+		r0 = ret.Get(0).(PythonBuildListResponse)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string, PageOptions) error); ok {
+		r1 = returnFunc(ctx, repositoryHref, nameNormalized, version, pageOpts)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTangy_PythonBuildList_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PythonBuildList'
+type MockTangy_PythonBuildList_Call struct {
+	*mock.Call
+}
+
+// PythonBuildList is a helper method to define mock.On call
+//   - ctx context.Context
+//   - repositoryHref string
+//   - nameNormalized string
+//   - version string
+//   - pageOpts PageOptions
+func (_e *MockTangy_Expecter) PythonBuildList(ctx any, repositoryHref any, nameNormalized any, version any, pageOpts any) *MockTangy_PythonBuildList_Call {
+	return &MockTangy_PythonBuildList_Call{Call: _e.mock.On("PythonBuildList", ctx, repositoryHref, nameNormalized, version, pageOpts)}
+}
+
+func (_c *MockTangy_PythonBuildList_Call) Run(run func(ctx context.Context, repositoryHref string, nameNormalized string, version string, pageOpts PageOptions)) *MockTangy_PythonBuildList_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 string
+		if args[3] != nil {
+			arg3 = args[3].(string)
+		}
+		var arg4 PageOptions
+		if args[4] != nil {
+			arg4 = args[4].(PageOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTangy_PythonBuildList_Call) Return(pythonBuildListResponse PythonBuildListResponse, err error) *MockTangy_PythonBuildList_Call {
+	_c.Call.Return(pythonBuildListResponse, err)
+	return _c
+}
+
+func (_c *MockTangy_PythonBuildList_Call) RunAndReturn(run func(ctx context.Context, repositoryHref string, nameNormalized string, version string, pageOpts PageOptions) (PythonBuildListResponse, error)) *MockTangy_PythonBuildList_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PythonDistributionList provides a mock function for the type MockTangy
 func (_mock *MockTangy) PythonDistributionList(ctx context.Context, repositoryHref string, nameNormalized string, version string, pageOpts PageOptions) (PythonDistributionListResponse, error) {
 	ret := _mock.Called(ctx, repositoryHref, nameNormalized, version, pageOpts)
@@ -548,6 +698,72 @@ func (_c *MockTangy_PythonPackageVersionsGet_Call) Return(pythonPackageDetails [
 }
 
 func (_c *MockTangy_PythonPackageVersionsGet_Call) RunAndReturn(run func(ctx context.Context, repositoryHref string, nameNormalized string) ([]PythonPackageDetail, error)) *MockTangy_PythonPackageVersionsGet_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PythonRepositoryMetrics provides a mock function for the type MockTangy
+func (_mock *MockTangy) PythonRepositoryMetrics(ctx context.Context, repositoryHref string) (PythonRepositoryMetrics, error) {
+	ret := _mock.Called(ctx, repositoryHref)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PythonRepositoryMetrics")
+	}
+
+	var r0 PythonRepositoryMetrics
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (PythonRepositoryMetrics, error)); ok {
+		return returnFunc(ctx, repositoryHref)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) PythonRepositoryMetrics); ok {
+		r0 = returnFunc(ctx, repositoryHref)
+	} else {
+		r0 = ret.Get(0).(PythonRepositoryMetrics)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, repositoryHref)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTangy_PythonRepositoryMetrics_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PythonRepositoryMetrics'
+type MockTangy_PythonRepositoryMetrics_Call struct {
+	*mock.Call
+}
+
+// PythonRepositoryMetrics is a helper method to define mock.On call
+//   - ctx context.Context
+//   - repositoryHref string
+func (_e *MockTangy_Expecter) PythonRepositoryMetrics(ctx any, repositoryHref any) *MockTangy_PythonRepositoryMetrics_Call {
+	return &MockTangy_PythonRepositoryMetrics_Call{Call: _e.mock.On("PythonRepositoryMetrics", ctx, repositoryHref)}
+}
+
+func (_c *MockTangy_PythonRepositoryMetrics_Call) Run(run func(ctx context.Context, repositoryHref string)) *MockTangy_PythonRepositoryMetrics_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTangy_PythonRepositoryMetrics_Call) Return(pythonRepositoryMetrics PythonRepositoryMetrics, err error) *MockTangy_PythonRepositoryMetrics_Call {
+	_c.Call.Return(pythonRepositoryMetrics, err)
+	return _c
+}
+
+func (_c *MockTangy_PythonRepositoryMetrics_Call) RunAndReturn(run func(ctx context.Context, repositoryHref string) (PythonRepositoryMetrics, error)) *MockTangy_PythonRepositoryMetrics_Call {
 	_c.Call.Return(run)
 	return _c
 }

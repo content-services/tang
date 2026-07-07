@@ -52,6 +52,11 @@ type MavenBuildListResponse struct {
 	Offset  int                  `json:"offset"`
 }
 
+type MavenRepositoryMetrics struct {
+	PackageCount int `json:"package_count"`
+	BuildCount   int `json:"build_count"`
+}
+
 type mavenArtifactQueryResult struct {
 	GroupID    string
 	ArtifactID string
@@ -402,4 +407,59 @@ func (t *tangyImpl) MavenBuildList(ctx context.Context, repositoryHref, groupID,
 		Limit:   pageOpts.Limit,
 		Offset:  pageOpts.Offset,
 	}, nil
+}
+
+// MavenRepositoryMetrics returns package and build counts for the latest version of a repository.
+// Packages are distinct group_id/artifact_id pairs; builds are .pom artifacts.
+func (t *tangyImpl) MavenRepositoryMetrics(ctx context.Context, repositoryHref string) (MavenRepositoryMetrics, error) {
+	if repositoryHref == "" {
+		return MavenRepositoryMetrics{}, nil
+	}
+
+	conn, err := t.pool.Acquire(ctx)
+	if err != nil {
+		return MavenRepositoryMetrics{}, err
+	}
+	defer conn.Release()
+
+	repoUUID, err := parseRepositoryHref(repositoryHref)
+	if err != nil {
+		return MavenRepositoryMetrics{}, fmt.Errorf("error parsing repository href: %w", err)
+	}
+
+	latestVersion, err := getLatestRepositoryVersion(ctx, conn, repoUUID)
+	if err != nil {
+		return MavenRepositoryMetrics{}, fmt.Errorf("error getting latest repository version: %w", err)
+	}
+
+	repoVerMap := []ParsedRepoVersion{{
+		RepositoryUUID: repoUUID,
+		Version:        latestVersion,
+	}}
+
+	args := pgx.NamedArgs{}
+	innerUnion, err := contentIdsInVersions(ctx, conn, repoVerMap, &args)
+	if err != nil {
+		return MavenRepositoryMetrics{}, err
+	}
+
+	pomFilter := ` AND rp.filename LIKE '%.pom'`
+	artifactFrom := `
+		FROM maven_mavenartifact rp
+	` + innerUnion + pomFilter
+
+	metricsQuery := `
+		SELECT
+			(SELECT COUNT(DISTINCT (rp.group_id, rp.artifact_id))
+			` + artifactFrom + `) AS package_count,
+			(SELECT COUNT(*)
+			` + artifactFrom + `) AS build_count`
+
+	var metrics MavenRepositoryMetrics
+	err = conn.QueryRow(ctx, metricsQuery, args).Scan(&metrics.PackageCount, &metrics.BuildCount)
+	if err != nil {
+		return MavenRepositoryMetrics{}, err
+	}
+
+	return metrics, nil
 }

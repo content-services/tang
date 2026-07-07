@@ -82,6 +82,18 @@ buildResponse, err := t.MavenBuildList(context.Background(), repositoryHref, "or
 if err != nil {
   return err
 }
+
+// Use Tangy to get package and build counts for a Python repository
+pythonMetrics, err := t.PythonRepositoryMetrics(context.Background(), repositoryHref)
+if err != nil {
+  return err
+}
+
+// Use Tangy to get package and build counts for a Maven repository
+mavenMetrics, err := t.MavenRepositoryMetrics(context.Background(), repositoryHref)
+if err != nil {
+  return err
+}
 ```
 See example.go for a complete RPM example.
 
@@ -90,9 +102,11 @@ See example.go for a complete RPM example.
 Python support queries the `python_pythonpackagecontent` table. Each row is one installable distribution file (wheel, sdist, etc.).
 
 - **`PythonPackageList`** — lists packages in the latest repository version, grouped by `name_normalized`, with all versions and `latest_versions` (most recent `pulp_created` per version). Supports optional `Search` filter on `name` or `name_normalized`. Pagination is done in SQL.
+- **`PythonBuildList`** — lists builds (`name_normalized` + `version` pairs) in the latest repository version, optionally filtered by `name_normalized` and `version`. Pagination is done in SQL.
+- **`PythonRepositoryMetrics`** — returns `package_count` (distinct `name_normalized`) and `build_count` (distinct `name_normalized` + `version` pairs) for the latest repository version.
 - **`PythonDistributionList`** — lists distribution files for a given `name_normalized` and `version`. Pagination is done in SQL.
 - **`PythonPackageGet`** — returns package metadata for a given `name_normalized` and `version`, plus all other versions available in the repository and all distribution files for that version. Metadata is taken from one representative distribution (sdist preferred). Returns `ErrPythonPackageNotFound` when the package version is not in the repository.
-- **`PythonPackageVersionsGet`** — returns metadata for every version of a given `name_normalized`, each entry matching `PythonPackageGet` for that version. Returns `ErrPythonPackageNotFound` when the package is not in the repository.
+- **`PythonPackageVersionsGet`** — returns metadata for every version of a given `name_normalized`, each entry matching `PythonPackageGet` for that version. Requires `name_normalized`. Returns `ErrPythonPackageNotFound` when the package is not in the repository.
 
 Repository href format:
 
