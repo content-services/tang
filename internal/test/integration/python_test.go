@@ -17,6 +17,7 @@ import (
 const (
 	testPythonRepoName              = "shelf-reader-fixture"
 	testPythonMultiVersionRepoName  = "idna-multi-version-fixture"
+	testPythonMetricsRepoName       = "idna-metrics-fixture"
 	testPythonMultiVersionPackage   = "idna"
 	testPythonMultiVersionKeepCount = int64(2)
 	testPythonRepoURL               = "https://pypi.org/"
@@ -320,10 +321,26 @@ func (p *PythonSuite) TestPythonBuildList() {
 }
 
 func (p *PythonSuite) TestPythonRepositoryMetrics() {
-	metrics, err := p.tangy.PythonRepositoryMetrics(context.Background(), p.repositoryHref)
+	repoHref, remoteHref, err := p.client.CreateRepository(
+		p.domainName,
+		testPythonMetricsRepoName,
+		testPythonRepoURL,
+		[]string{testPythonMultiVersionPackage},
+		testPythonMultiVersionKeepCount,
+	)
+	require.NoError(p.T(), err)
+
+	syncTask, err := p.client.SyncPythonRepository(repoHref, remoteHref)
+	require.NoError(p.T(), err)
+
+	_, err = p.client.PollTask(syncTask)
+	require.NoError(p.T(), err)
+
+	metrics, err := p.tangy.PythonRepositoryMetrics(context.Background(), repoHref)
 	require.NoError(p.T(), err)
 	assert.Equal(p.T(), 1, metrics.PackageCount)
-	assert.Equal(p.T(), 1, metrics.BuildCount)
+	assert.Equal(p.T(), 2, metrics.BuildCount)
+	assert.Equal(p.T(), 2, metrics.VersionCount)
 }
 
 func (p *PythonSuite) TestPythonRepositoryMetricsEmptyHref() {
@@ -331,6 +348,7 @@ func (p *PythonSuite) TestPythonRepositoryMetricsEmptyHref() {
 	require.NoError(p.T(), err)
 	assert.Zero(p.T(), metrics.PackageCount)
 	assert.Zero(p.T(), metrics.BuildCount)
+	assert.Zero(p.T(), metrics.VersionCount)
 }
 
 func (p *PythonSuite) TestPythonPackageGetNotFound() {
