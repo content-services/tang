@@ -410,7 +410,8 @@ func (t *tangyImpl) MavenBuildList(ctx context.Context, repositoryHref, groupID,
 }
 
 // MavenRepositoryMetrics returns package and build counts for the latest version of a repository.
-// Packages are distinct group_id/artifact_id pairs; builds are .pom artifacts.
+// Packages are distinct group_id/artifact_id pairs. Builds are distinct package versions:
+// group_id/artifact_id tuples paired with the base version after stripping Maven build suffixes such as .rhlw-00001.
 func (t *tangyImpl) MavenRepositoryMetrics(ctx context.Context, repositoryHref string) (MavenRepositoryMetrics, error) {
 	if repositoryHref == "" {
 		return MavenRepositoryMetrics{}, nil
@@ -443,16 +444,19 @@ func (t *tangyImpl) MavenRepositoryMetrics(ctx context.Context, repositoryHref s
 		return MavenRepositoryMetrics{}, err
 	}
 
-	pomFilter := ` AND rp.filename LIKE '%.pom'`
 	artifactFrom := `
 		FROM maven_mavenartifact rp
-	` + innerUnion + pomFilter
+	` + innerUnion
 
 	metricsQuery := `
 		SELECT
 			(SELECT COUNT(DISTINCT (rp.group_id, rp.artifact_id))
 			` + artifactFrom + `) AS package_count,
-			(SELECT COUNT(*)
+			(SELECT COUNT(DISTINCT (
+				rp.group_id,
+				rp.artifact_id,
+				regexp_replace(rp.version, '\.[a-zA-Z]+-\d+$', '')
+			))
 			` + artifactFrom + `) AS build_count`
 
 	var metrics MavenRepositoryMetrics
