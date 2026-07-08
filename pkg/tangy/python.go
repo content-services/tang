@@ -53,6 +53,7 @@ type PythonBuildListResponse struct {
 type PythonRepositoryMetrics struct {
 	PackageCount int `json:"package_count"`
 	BuildCount   int `json:"build_count"`
+	VersionCount int `json:"version_count"`
 }
 
 type PythonDistributionListItem struct {
@@ -520,7 +521,8 @@ func (t *tangyImpl) PythonBuildList(ctx context.Context, repositoryHref, nameNor
 	}, nil
 }
 
-// PythonRepositoryMetrics returns package and build counts for the latest version of a repository.
+// PythonRepositoryMetrics returns package, build, and version counts for the latest version of a repository.
+// Build count equals version count (distinct name_normalized + version pairs).
 func (t *tangyImpl) PythonRepositoryMetrics(ctx context.Context, repositoryHref string) (PythonRepositoryMetrics, error) {
 	if repositoryHref == "" {
 		return PythonRepositoryMetrics{}, nil
@@ -566,13 +568,15 @@ func (t *tangyImpl) PythonRepositoryMetrics(ctx context.Context, repositoryHref 
 				SELECT 1
 				` + contentFrom + `
 				GROUP BY rp.name_normalized, rp.version
-			 ) builds) AS build_count`
+			 ) versions) AS version_count`
 
 	var metrics PythonRepositoryMetrics
-	err = conn.QueryRow(ctx, metricsQuery, args).Scan(&metrics.PackageCount, &metrics.BuildCount)
+	err = conn.QueryRow(ctx, metricsQuery, args).Scan(&metrics.PackageCount, &metrics.VersionCount)
 	if err != nil {
 		return PythonRepositoryMetrics{}, err
 	}
+
+	metrics.BuildCount = metrics.VersionCount
 
 	return metrics, nil
 }

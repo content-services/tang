@@ -393,6 +393,7 @@ func TestMockTangyPythonRepositoryMetrics(t *testing.T) {
 	expected := PythonRepositoryMetrics{
 		PackageCount: 10,
 		BuildCount:   25,
+		VersionCount: 25,
 	}
 
 	mockTangy.On("PythonRepositoryMetrics", ctx, repoHref).Return(expected, nil)

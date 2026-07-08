@@ -156,6 +156,7 @@ func TestMockTangyMavenRepositoryMetrics(t *testing.T) {
 	expected := MavenRepositoryMetrics{
 		PackageCount: 1,
 		BuildCount:   1,
+		VersionCount: 1,
 	}
 
 	mockTangy.On("MavenRepositoryMetrics", ctx, repoHref).Return(expected, nil)

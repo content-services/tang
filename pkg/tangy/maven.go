@@ -55,6 +55,7 @@ type MavenBuildListResponse struct {
 type MavenRepositoryMetrics struct {
 	PackageCount int `json:"package_count"`
 	BuildCount   int `json:"build_count"`
+	VersionCount int `json:"version_count"`
 }
 
 type mavenArtifactQueryResult struct {
@@ -409,8 +410,8 @@ func (t *tangyImpl) MavenBuildList(ctx context.Context, repositoryHref, groupID,
 	}, nil
 }
 
-// MavenRepositoryMetrics returns package and build counts for the latest version of a repository.
-// Packages are distinct group_id/artifact_id pairs; builds are .pom artifacts.
+// MavenRepositoryMetrics returns package, build, and version counts for the latest version of a repository.
+// Packages are distinct group_id/artifact_id pairs from .pom artifacts; builds and versions are counted from .jar artifacts.
 func (t *tangyImpl) MavenRepositoryMetrics(ctx context.Context, repositoryHref string) (MavenRepositoryMetrics, error) {
 	if repositoryHref == "" {
 		return MavenRepositoryMetrics{}, nil
@@ -444,19 +445,25 @@ func (t *tangyImpl) MavenRepositoryMetrics(ctx context.Context, repositoryHref s
 	}
 
 	pomFilter := ` AND rp.filename LIKE '%.pom'`
-	artifactFrom := `
+	jarFilter := ` AND rp.filename LIKE '%.jar'`
+	pomFrom := `
 		FROM maven_mavenartifact rp
 	` + innerUnion + pomFilter
+	jarFrom := `
+		FROM maven_mavenartifact rp
+	` + innerUnion + jarFilter
 
 	metricsQuery := `
 		SELECT
 			(SELECT COUNT(DISTINCT (rp.group_id, rp.artifact_id))
-			` + artifactFrom + `) AS package_count,
+			` + pomFrom + `) AS package_count,
 			(SELECT COUNT(*)
-			` + artifactFrom + `) AS build_count`
+			` + jarFrom + `) AS build_count,
+			(SELECT COUNT(DISTINCT (rp.group_id, rp.artifact_id, rp.version))
+			` + jarFrom + `) AS version_count`
 
 	var metrics MavenRepositoryMetrics
-	err = conn.QueryRow(ctx, metricsQuery, args).Scan(&metrics.PackageCount, &metrics.BuildCount)
+	err = conn.QueryRow(ctx, metricsQuery, args).Scan(&metrics.PackageCount, &metrics.BuildCount, &metrics.VersionCount)
 	if err != nil {
 		return MavenRepositoryMetrics{}, err
 	}
