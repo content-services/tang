@@ -171,9 +171,10 @@ Or run a specific suite:
 ```bash
 CONFIG_PATH="$(pwd)/configs/" go test ./internal/test/integration/ -run TestPythonSuite -v
 CONFIG_PATH="$(pwd)/configs/" go test ./internal/test/integration/ -run TestRpmSuite -v
+CONFIG_PATH="$(pwd)/configs/" go test ./internal/test/integration/ -run TestMavenSuite -v
 ```
 
-The Python integration test syncs `shelf-reader` from PyPI into a random domain via the Pulp API, then asserts tangy can read it from the database. Test data is left in the database after a run; use `make compose-clean` to wipe volumes and start fresh.
+The Python integration test syncs `shelf-reader` from PyPI into a random domain via the Pulp API, then asserts tangy can read it from the database. The Maven integration test pull-through caches `junit:junit:4.13.2` from a local nginx fixture in the compose stack (avoids Maven Central rate limits in CI), adds the cached content to a repository, then asserts tangy can read it from the database. Test data is left in the database after a run; use `make compose-clean` to wipe volumes and start fresh.
 
 ### Mocking
 Tangy also exports a mock interface you can regenerate using the [mockery](https://github.com/vektra/mockery) tool.

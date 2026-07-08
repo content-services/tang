@@ -3,7 +3,7 @@ module github.com/content-services/tang
 go 1.24.0
 
 require (
-	github.com/content-services/zest/release/v2024 v2024.12.1734541842
+	github.com/content-services/zest/release/v2026 v2026.7.1783082453
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx-zerolog v0.0.0-20230315001418-f978528409eb
 	github.com/jackc/pgx/v5 v5.7.6

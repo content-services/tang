@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/content-services/tang/internal/config"
-	zest "github.com/content-services/zest/release/v2024"
+	zest "github.com/content-services/zest/release/v2026"
 	"golang.org/x/exp/slices"
 )
 
@@ -102,7 +102,6 @@ func (r *RpmZest) CreateRepository(domain, name, url string) (repoHref string, r
 	defer httpResp.Body.Close()
 
 	rpmRpmRepository := *zest.NewRpmRpmRepository(name)
-	rpmRpmRepository.PackageSigningFingerprint = nil
 	if remoteResponse.PulpHref != nil {
 		rpmRpmRepository.SetRemote(*remoteResponse.PulpHref)
 	}
@@ -118,7 +117,7 @@ func (r *RpmZest) CreateRepository(domain, name, url string) (repoHref string, r
 }
 
 func (r *RpmZest) UpdateRemote(remoteHref string, url string) error {
-	_, httpResp, err := r.client.RemotesRpmAPI.RemotesRpmRpmPartialUpdate(r.ctx, remoteHref).PatchedrpmRpmRemote(zest.PatchedrpmRpmRemote{Url: &url}).Execute()
+	_, httpResp, err := r.client.RemotesRpmAPI.RemotesRpmRpmPartialUpdate(r.ctx, normalizePulpHref(remoteHref)).PatchedrpmRpmRemote(zest.PatchedrpmRpmRemote{Url: &url}).Execute()
 	if httpResp != nil {
 		defer httpResp.Body.Close()
 	}
@@ -133,7 +132,7 @@ func (r *RpmZest) SyncRpmRepository(rpmRpmRepositoryHref string, remoteHref stri
 	rpmRepositoryHref.SetRemote(remoteHref)
 	rpmRepositoryHref.SetSyncPolicy(zest.SYNCPOLICYENUM_MIRROR_CONTENT_ONLY)
 
-	resp, httpResp, err := r.client.RepositoriesRpmAPI.RepositoriesRpmRpmSync(r.ctx, rpmRpmRepositoryHref).
+	resp, httpResp, err := r.client.RepositoriesRpmAPI.RepositoriesRpmRpmSync(r.ctx, normalizePulpHref(rpmRpmRepositoryHref)).
 		RpmRepositorySyncURL(rpmRepositoryHref).Execute()
 	defer httpResp.Body.Close()
 	if err != nil {
@@ -144,7 +143,7 @@ func (r *RpmZest) SyncRpmRepository(rpmRpmRepositoryHref string, remoteHref stri
 
 // GetTask Fetch a pulp task
 func (r *RpmZest) GetTask(taskHref string) (zest.TaskResponse, error) {
-	task, httpResp, err := r.client.TasksAPI.TasksRead(r.ctx, taskHref).Execute()
+	task, httpResp, err := r.client.TasksAPI.TasksRead(r.ctx, normalizePulpHref(taskHref)).Execute()
 
 	if err != nil {
 		return zest.TaskResponse{}, err
