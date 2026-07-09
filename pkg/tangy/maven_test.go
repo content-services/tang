@@ -50,6 +50,115 @@ func TestParseRepositoryHref(t *testing.T) {
 	}
 }
 
+func TestStripMavenReleaseVersion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		version string
+		want    string
+	}{
+		{
+			name:    "release suffix in version",
+			version: "5.3.18.rhlw-00003",
+			want:    "5.3.18",
+		},
+		{
+			name:    "plain version",
+			version: "1.2.3",
+			want:    "1.2.3",
+		},
+		{
+			name:    "final qualifier version",
+			version: "4.1.114.Final",
+			want:    "4.1.114.Final",
+		},
+		{
+			name:    "empty version",
+			version: "",
+			want:    "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, stripMavenReleaseVersion(tt.version))
+		})
+	}
+}
+
+func TestMavenRepositoryMetricsCounting(t *testing.T) {
+	t.Parallel()
+
+	type artifact struct {
+		group    string
+		artifact string
+		version  string
+	}
+
+	countMetrics := func(artifacts []artifact) (packageCount, buildCount, versionCount int) {
+		packages := make(map[[2]string]struct{})
+		builds := make(map[[3]string]struct{})
+		versions := make(map[[3]string]struct{})
+
+		for _, a := range artifacts {
+			packages[[2]string{a.group, a.artifact}] = struct{}{}
+			builds[[3]string{a.group, a.artifact, a.version}] = struct{}{}
+			baseVersion := stripMavenReleaseVersion(a.version)
+			versions[[3]string{a.group, a.artifact, baseVersion}] = struct{}{}
+		}
+
+		return len(packages), len(builds), len(versions)
+	}
+
+	springCoreVersions := []string{
+		"5.3.18.rhlw-00003",
+		"5.3.18.rhlw-00004",
+		"5.3.18.rhlw-00005",
+		"5.3.18.rhlw-00006",
+		"5.3.18.rhlw-00007",
+	}
+	springCoreArtifacts := make([]artifact, 0, len(springCoreVersions)*3)
+	for _, version := range springCoreVersions {
+		for range 3 {
+			springCoreArtifacts = append(springCoreArtifacts, artifact{
+				group:    "org.springframework",
+				artifact: "spring-core",
+				version:  version,
+			})
+		}
+	}
+
+	nettyVersions := []string{
+		"4.1.114.Final",
+		"4.1.127.Final",
+		"4.1.128.Final",
+		"4.1.130.Final",
+		"4.1.133.Final",
+	}
+	nettyArtifacts := make([]artifact, 0, len(nettyVersions)*5)
+	for _, version := range nettyVersions {
+		for range 5 {
+			nettyArtifacts = append(nettyArtifacts, artifact{
+				group:    "io.netty",
+				artifact: "netty-codec",
+				version:  version,
+			})
+		}
+	}
+
+	packageCount, buildCount, versionCount := countMetrics(springCoreArtifacts)
+	assert.Equal(t, 1, packageCount)
+	assert.Equal(t, 5, buildCount)
+	assert.Equal(t, 1, versionCount)
+
+	packageCount, buildCount, versionCount = countMetrics(nettyArtifacts)
+	assert.Equal(t, 1, packageCount)
+	assert.Equal(t, 5, buildCount)
+	assert.Equal(t, 5, versionCount)
+}
+
 func TestExtractRelease(t *testing.T) {
 	t.Parallel()
 

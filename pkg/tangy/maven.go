@@ -243,13 +243,26 @@ func (t *tangyImpl) MavenPackageList(ctx context.Context, repositoryHref string,
 	}, nil
 }
 
+const mavenReleaseQualifierPattern = `[a-zA-Z]+-\d+`
+
+const mavenReleaseVersionSuffixPattern = `\.` + mavenReleaseQualifierPattern + `$`
+
+const mavenReleaseFilenamePattern = `\.(` + mavenReleaseQualifierPattern + `)\.pom$`
+
+var mavenReleaseVersionSuffixRegexp = regexp.MustCompile(mavenReleaseVersionSuffixPattern)
+
+var mavenReleaseFilenameRegexp = regexp.MustCompile(mavenReleaseFilenamePattern)
+
+// stripMavenReleaseVersion removes a trailing release qualifier from a Maven version string.
+// Example: 5.3.18.rhlw-00003 -> 5.3.18
+func stripMavenReleaseVersion(version string) string {
+	return mavenReleaseVersionSuffixRegexp.ReplaceAllString(version, "")
+}
+
 // extractRelease extracts the release version from a filename
 // Example: smallrye-mutiny-vertx-core-3.16.0.rhlw-3002.pom -> rhlw-3002
 func extractRelease(filename string) string {
-	// Pattern to match .rhlw-XXXX or similar release patterns before .pom
-	// Looks for a dot followed by alphanumeric+dash, then .pom
-	re := regexp.MustCompile(`\.([a-zA-Z]+-\d+)\.pom$`)
-	matches := re.FindStringSubmatch(filename)
+	matches := mavenReleaseFilenameRegexp.FindStringSubmatch(filename)
 	if len(matches) > 1 {
 		return matches[1]
 	}
@@ -411,7 +424,8 @@ func (t *tangyImpl) MavenBuildList(ctx context.Context, repositoryHref, groupID,
 }
 
 // MavenRepositoryMetrics returns package, build, and version counts for the latest version of a repository.
-// Packages are distinct group_id/artifact_id pairs from .pom artifacts; builds and versions are counted from .jar artifacts.
+// All counts are based on .jar artifacts. Builds are distinct full versions (e.g. 5.3.18.rhlw-00003);
+// versions are distinct base versions with release qualifiers stripped (e.g. 5.3.18).
 func (t *tangyImpl) MavenRepositoryMetrics(ctx context.Context, repositoryHref string) (MavenRepositoryMetrics, error) {
 	if repositoryHref == "" {
 		return MavenRepositoryMetrics{}, nil
@@ -444,11 +458,7 @@ func (t *tangyImpl) MavenRepositoryMetrics(ctx context.Context, repositoryHref s
 		return MavenRepositoryMetrics{}, err
 	}
 
-	pomFilter := ` AND rp.filename LIKE '%.pom'`
 	jarFilter := ` AND rp.filename LIKE '%.jar'`
-	pomFrom := `
-		FROM maven_mavenartifact rp
-	` + innerUnion + pomFilter
 	jarFrom := `
 		FROM maven_mavenartifact rp
 	` + innerUnion + jarFilter
@@ -456,10 +466,14 @@ func (t *tangyImpl) MavenRepositoryMetrics(ctx context.Context, repositoryHref s
 	metricsQuery := `
 		SELECT
 			(SELECT COUNT(DISTINCT (rp.group_id, rp.artifact_id))
-			` + pomFrom + `) AS package_count,
-			(SELECT COUNT(*)
-			` + jarFrom + `) AS build_count,
+			` + jarFrom + `) AS package_count,
 			(SELECT COUNT(DISTINCT (rp.group_id, rp.artifact_id, rp.version))
+			` + jarFrom + `) AS build_count,
+			(SELECT COUNT(DISTINCT (
+				rp.group_id,
+				rp.artifact_id,
+				regexp_replace(rp.version, '` + mavenReleaseVersionSuffixPattern + `', '')
+			))
 			` + jarFrom + `) AS version_count`
 
 	var metrics MavenRepositoryMetrics
