@@ -3,5 +3,5 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>foo</groupId>
     <artifactId>bar</artifactId>
-    <version>1.2.3</version>
+    <version>1.2.3.rhlw-00002</version>
 </project>
