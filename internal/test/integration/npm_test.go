@@ -344,7 +344,7 @@ func TestNpmScopedSuite(t *testing.T) {
 }
 
 func (n *NpmScopedSuite) TestNpmScopedPackage() {
-	listResponse, err := n.tangy.NpmPackageList(context.Background(), n.repositoryHref, tangy.NpmPackageListFilters{Search: "@types/"}, tangy.PageOptions{
+	listResponse, err := n.tangy.NpmPackageList(context.Background(), n.repositoryHref, tangy.NpmPackageListFilters{Search: "@types"}, tangy.PageOptions{
 		Offset: 0,
 		Limit:  10,
 	})
@@ -353,6 +353,15 @@ func (n *NpmScopedSuite) TestNpmScopedPackage() {
 	assert.Equal(n.T(), 1, listResponse.Total)
 	assert.Equal(n.T(), testNpmScopedPackageName, listResponse.Results[0].Name)
 	assert.Contains(n.T(), listResponse.Results[0].Versions, testNpmScopedVersion)
+
+	listResponse, err = n.tangy.NpmPackageList(context.Background(), n.repositoryHref, tangy.NpmPackageListFilters{Search: "is-odd"}, tangy.PageOptions{
+		Offset: 0,
+		Limit:  10,
+	})
+	require.NoError(n.T(), err)
+	require.NotEmpty(n.T(), listResponse.Results)
+	assert.Equal(n.T(), 1, listResponse.Total)
+	assert.Equal(n.T(), testNpmScopedPackageName, listResponse.Results[0].Name)
 
 	detail, err := n.tangy.NpmPackageGet(
 		context.Background(),

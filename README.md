@@ -145,7 +145,7 @@ Repository href format:
 
 npm support queries the `npm_package` table. Each row is one package version (typically one tarball). Pulp stores only `name` and `version` in the database; rich metadata (`description`, `license`, `dependencies`, etc.) lives in the tarball's `package.json` and is not persisted by pulp_npm.
 
-- **`NpmPackageList`** — lists packages in the latest repository version, grouped by `name`, with all versions and `latest_versions` (most recent `pulp_created` per version). Supports optional `Search` prefix filter on `name` (including scoped names like `@scope/pkg`). Pagination is done in SQL.
+- **`NpmPackageList`** — lists packages in the latest repository version, grouped by `name`, with all versions and `latest_versions` (most recent `pulp_created` per version). Supports optional `Search` prefix filter on the npm scope (text before `/`) or unscoped package name (text after `/`), similar to Maven `group_id` / `artifact_id` search. Unscoped names match against the full name. Pagination is done in SQL.
 - **`NpmBuildList`** — lists builds (`name` + `version` pairs) in the latest repository version, optionally filtered by `name` and `version`. Pagination is done in SQL.
 - **`NpmPackageGet`** — returns tarball info (`relative_path`, `filename`, `sha256`, `size`) and timestamps for a given `name` and `version`, plus all other versions available in the repository. Returns `ErrNpmPackageNotFound` when the package version is not in the repository.
 - **`NpmPackageVersionsGet`** — returns tarball info for every version of a given `name`, each entry matching `NpmPackageGet` for that version. Returns `ErrNpmPackageNotFound` when the package is not in the repository.

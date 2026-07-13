@@ -122,7 +122,7 @@ func (t *tangyImpl) NpmPackageList(ctx context.Context, repositoryHref string, f
 	searchFilter := ""
 	if filterOpts.Search != "" {
 		args["searchFilter"] = filterOpts.Search
-		searchFilter = ` AND rp.name ILIKE CONCAT(@searchFilter::text, '%')`
+		searchFilter = npmPackageListSearchFilter()
 	}
 	innerUnion, err := contentIdsInVersions(ctx, conn, repoVerMap, &args)
 	if err != nil {
@@ -523,6 +523,45 @@ func assembleNpmPackageListFromRows(rows []npmPackageVersionRow) []NpmPackageLis
 	}
 
 	return append(results, current)
+}
+
+// npmPackageListSearchFilter returns SQL that prefix-matches the search term against
+// the npm scope (text before the first '/') and the unscoped package name (text after
+// the first '/'), similar to MavenPackageList matching group_id OR artifact_id.
+// Unscoped packages only have a scope segment (the full name).
+func npmPackageListSearchFilter() string {
+	return ` AND (
+		split_part(rp.name, '/', 1) ILIKE CONCAT(@searchFilter::text, '%')
+		OR (
+			POSITION('/' IN rp.name) > 0
+			AND split_part(rp.name, '/', 2) ILIKE CONCAT(@searchFilter::text, '%')
+		)
+	)`
+}
+
+// splitNpmPackageName splits a package name into scope and unscoped name segments.
+func splitNpmPackageName(name string) (scope, unscopedName string, scoped bool) {
+	if i := strings.Index(name, "/"); i >= 0 {
+		return name[:i], name[i+1:], true
+	}
+	return name, "", false
+}
+
+// npmPackageMatchesSearch mirrors npmPackageListSearchFilter for unit tests.
+func npmPackageMatchesSearch(name, search string) bool {
+	if search == "" {
+		return true
+	}
+
+	searchLower := strings.ToLower(search)
+	scope, unscopedName, scoped := splitNpmPackageName(name)
+	if strings.HasPrefix(strings.ToLower(scope), searchLower) {
+		return true
+	}
+	if scoped && strings.HasPrefix(strings.ToLower(unscopedName), searchLower) {
+		return true
+	}
+	return false
 }
 
 // parseNpmRepositoryHref extracts the repository UUID from an npm repository href.
