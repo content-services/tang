@@ -165,6 +165,73 @@ func TestParseNpmLatestVersionsJSON(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestNpmPackageMatchesSearch(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		pkg    string
+		search string
+		want   bool
+	}{
+		{
+			name:   "unscoped package name prefix",
+			pkg:    "is-odd",
+			search: "is-odd",
+			want:   true,
+		},
+		{
+			name:   "unscoped package name shorter prefix",
+			pkg:    "is-odd",
+			search: "is",
+			want:   true,
+		},
+		{
+			name:   "scoped package scope prefix",
+			pkg:    "@types/is-odd",
+			search: "@types",
+			want:   true,
+		},
+		{
+			name:   "scoped package unscoped name prefix",
+			pkg:    "@types/is-odd",
+			search: "is-odd",
+			want:   true,
+		},
+		{
+			name:   "scoped package unscoped name shorter prefix",
+			pkg:    "@types/is-odd",
+			search: "is",
+			want:   true,
+		},
+		{
+			name:   "scoped package full name prefix does not match unscoped segment only",
+			pkg:    "@types/is-odd",
+			search: "@types/",
+			want:   false,
+		},
+		{
+			name:   "scoped package search does not match unrelated scope",
+			pkg:    "@types/is-odd",
+			search: "lodash",
+			want:   false,
+		},
+		{
+			name:   "empty search matches everything",
+			pkg:    "@types/is-odd",
+			search: "",
+			want:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, npmPackageMatchesSearch(tt.pkg, tt.search))
+		})
+	}
+}
+
 func TestMockTangyNpmPackageList(t *testing.T) {
 	t.Parallel()
 
