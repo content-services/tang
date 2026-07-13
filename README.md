@@ -94,6 +94,31 @@ mavenMetrics, err := t.MavenRepositoryMetrics(context.Background(), repositoryHr
 if err != nil {
   return err
 }
+
+// Use Tangy to list npm packages from the latest version of a repository, grouped by name
+repositoryHref := "/api/pulp/default/api/v3/repositories/npm/npm/018c1c95-4281-76eb-b277-842cbad524f4/"
+packages, err := t.NpmPackageList(context.Background(), repositoryHref, tangy.NpmPackageListFilters{Search: "is-odd"}, tangy.PageOptions{Offset: 0, Limit: 10})
+if err != nil {
+  return err
+}
+
+// Use Tangy to get tarball info for a specific npm package version
+detail, err := t.NpmPackageGet(context.Background(), repositoryHref, "is-odd", "3.0.1")
+if err != nil {
+  return err
+}
+
+// Use Tangy to get tarball info for every version of an npm package
+versions, err := t.NpmPackageVersionsGet(context.Background(), repositoryHref, "is-odd")
+if err != nil {
+  return err
+}
+
+// Use Tangy to list all npm package builds (name + version pairs)
+buildResponse, err := t.NpmBuildList(context.Background(), repositoryHref, "is-odd", "3.0.1", tangy.PageOptions{Offset: 0, Limit: 10})
+if err != nil {
+  return err
+}
 ```
 See example.go for a complete RPM example.
 
@@ -115,6 +140,23 @@ Repository href format:
 ```
 
 `PythonDistributionList` filters by `name_normalized` (PEP 503), not the display `name`.
+
+### npm packages
+
+npm support queries the `npm_package` table. Each row is one package version (typically one tarball). Pulp stores only `name` and `version` in the database; rich metadata (`description`, `license`, `dependencies`, etc.) lives in the tarball's `package.json` and is not persisted by pulp_npm.
+
+- **`NpmPackageList`** — lists packages in the latest repository version, grouped by `name`, with all versions and `latest_versions` (most recent `pulp_created` per version). Supports optional `Search` prefix filter on `name` (including scoped names like `@scope/pkg`). Pagination is done in SQL.
+- **`NpmBuildList`** — lists builds (`name` + `version` pairs) in the latest repository version, optionally filtered by `name` and `version`. Pagination is done in SQL.
+- **`NpmPackageGet`** — returns tarball info (`relative_path`, `filename`, `sha256`, `size`) and timestamps for a given `name` and `version`, plus all other versions available in the repository. Returns `ErrNpmPackageNotFound` when the package version is not in the repository.
+- **`NpmPackageVersionsGet`** — returns tarball info for every version of a given `name`, each entry matching `NpmPackageGet` for that version. Returns `ErrNpmPackageNotFound` when the package is not in the repository.
+
+Repository href format:
+
+```
+/api/pulp/{domain}/api/v3/repositories/npm/npm/{uuid}/
+```
+
+When syncing npm content into Pulp (e.g. for integration tests), the remote URL must be **version-specific** metadata, not the package index — e.g. `https://registry.npmjs.org/is-odd/3.0.1`, not `https://registry.npmjs.org/is-odd`.
 
 ## Developing
 To develop for tangy, there are a few more things to know.
@@ -172,9 +214,10 @@ Or run a specific suite:
 CONFIG_PATH="$(pwd)/configs/" go test ./internal/test/integration/ -run TestPythonSuite -v
 CONFIG_PATH="$(pwd)/configs/" go test ./internal/test/integration/ -run TestRpmSuite -v
 CONFIG_PATH="$(pwd)/configs/" go test ./internal/test/integration/ -run TestMavenSuite -v
+CONFIG_PATH="$(pwd)/configs/" go test ./internal/test/integration/ -run TestNpmSuite -v
 ```
 
-The Python integration test syncs `shelf-reader` from PyPI into a random domain via the Pulp API, then asserts tangy can read it from the database. The Maven integration test pull-through caches `junit:junit:4.13.2` from a local nginx fixture in the compose stack (avoids Maven Central rate limits in CI), adds the cached content to a repository, then asserts tangy can read it from the database. Test data is left in the database after a run; use `make compose-clean` to wipe volumes and start fresh.
+The Python integration test syncs `shelf-reader` from PyPI into a random domain via the Pulp API, then asserts tangy can read it from the database. The Maven integration test pull-through caches `junit:junit:4.13.2` from a local nginx fixture in the compose stack (avoids Maven Central rate limits in CI), adds the cached content to a repository, then asserts tangy can read it from the database. The npm integration test syncs `is-odd@3.0.1` from registry.npmjs.org (version-specific metadata URL), then asserts tangy can read it from the database. Test data is left in the database after a run; use `make compose-clean` to wipe volumes and start fresh.
 
 ### Mocking
 Tangy also exports a mock interface you can regenerate using the [mockery](https://github.com/vektra/mockery) tool.

@@ -74,6 +74,10 @@ type Tangy interface {
 	MavenPackageList(ctx context.Context, repositoryHref string, filterOpts MavenPackageListFilters, pageOpts PageOptions) (MavenPackageListResponse, error)
 	MavenBuildList(ctx context.Context, repositoryHref, groupID, artifactID, version string, pageOpts PageOptions) (MavenBuildListResponse, error)
 	MavenRepositoryMetrics(ctx context.Context, repositoryHref string) (MavenRepositoryMetrics, error)
+	NpmPackageList(ctx context.Context, repositoryHref string, filterOpts NpmPackageListFilters, pageOpts PageOptions) (NpmPackageListResponse, error)
+	NpmPackageGet(ctx context.Context, repositoryHref, name, version string) (NpmPackageDetail, error)
+	NpmPackageVersionsGet(ctx context.Context, repositoryHref, name string) ([]NpmPackageDetail, error)
+	NpmBuildList(ctx context.Context, repositoryHref, name, version string, pageOpts PageOptions) (NpmBuildListResponse, error)
 	Close()
 }
 

@@ -304,6 +304,320 @@ func (_c *MockTangy_MavenRepositoryMetrics_Call) RunAndReturn(run func(ctx conte
 	return _c
 }
 
+// NpmBuildList provides a mock function for the type MockTangy
+func (_mock *MockTangy) NpmBuildList(ctx context.Context, repositoryHref string, name string, version string, pageOpts PageOptions) (NpmBuildListResponse, error) {
+	ret := _mock.Called(ctx, repositoryHref, name, version, pageOpts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for NpmBuildList")
+	}
+
+	var r0 NpmBuildListResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, PageOptions) (NpmBuildListResponse, error)); ok {
+		return returnFunc(ctx, repositoryHref, name, version, pageOpts)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, PageOptions) NpmBuildListResponse); ok {
+		r0 = returnFunc(ctx, repositoryHref, name, version, pageOpts)
+	} else {
+		r0 = ret.Get(0).(NpmBuildListResponse)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string, PageOptions) error); ok {
+		r1 = returnFunc(ctx, repositoryHref, name, version, pageOpts)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTangy_NpmBuildList_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NpmBuildList'
+type MockTangy_NpmBuildList_Call struct {
+	*mock.Call
+}
+
+// NpmBuildList is a helper method to define mock.On call
+//   - ctx context.Context
+//   - repositoryHref string
+//   - name string
+//   - version string
+//   - pageOpts PageOptions
+func (_e *MockTangy_Expecter) NpmBuildList(ctx any, repositoryHref any, name any, version any, pageOpts any) *MockTangy_NpmBuildList_Call {
+	return &MockTangy_NpmBuildList_Call{Call: _e.mock.On("NpmBuildList", ctx, repositoryHref, name, version, pageOpts)}
+}
+
+func (_c *MockTangy_NpmBuildList_Call) Run(run func(ctx context.Context, repositoryHref string, name string, version string, pageOpts PageOptions)) *MockTangy_NpmBuildList_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 string
+		if args[3] != nil {
+			arg3 = args[3].(string)
+		}
+		var arg4 PageOptions
+		if args[4] != nil {
+			arg4 = args[4].(PageOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTangy_NpmBuildList_Call) Return(npmBuildListResponse NpmBuildListResponse, err error) *MockTangy_NpmBuildList_Call {
+	_c.Call.Return(npmBuildListResponse, err)
+	return _c
+}
+
+func (_c *MockTangy_NpmBuildList_Call) RunAndReturn(run func(ctx context.Context, repositoryHref string, name string, version string, pageOpts PageOptions) (NpmBuildListResponse, error)) *MockTangy_NpmBuildList_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// NpmPackageGet provides a mock function for the type MockTangy
+func (_mock *MockTangy) NpmPackageGet(ctx context.Context, repositoryHref string, name string, version string) (NpmPackageDetail, error) {
+	ret := _mock.Called(ctx, repositoryHref, name, version)
+
+	if len(ret) == 0 {
+		panic("no return value specified for NpmPackageGet")
+	}
+
+	var r0 NpmPackageDetail
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) (NpmPackageDetail, error)); ok {
+		return returnFunc(ctx, repositoryHref, name, version)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) NpmPackageDetail); ok {
+		r0 = returnFunc(ctx, repositoryHref, name, version)
+	} else {
+		r0 = ret.Get(0).(NpmPackageDetail)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
+		r1 = returnFunc(ctx, repositoryHref, name, version)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTangy_NpmPackageGet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NpmPackageGet'
+type MockTangy_NpmPackageGet_Call struct {
+	*mock.Call
+}
+
+// NpmPackageGet is a helper method to define mock.On call
+//   - ctx context.Context
+//   - repositoryHref string
+//   - name string
+//   - version string
+func (_e *MockTangy_Expecter) NpmPackageGet(ctx any, repositoryHref any, name any, version any) *MockTangy_NpmPackageGet_Call {
+	return &MockTangy_NpmPackageGet_Call{Call: _e.mock.On("NpmPackageGet", ctx, repositoryHref, name, version)}
+}
+
+func (_c *MockTangy_NpmPackageGet_Call) Run(run func(ctx context.Context, repositoryHref string, name string, version string)) *MockTangy_NpmPackageGet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 string
+		if args[3] != nil {
+			arg3 = args[3].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTangy_NpmPackageGet_Call) Return(npmPackageDetail NpmPackageDetail, err error) *MockTangy_NpmPackageGet_Call {
+	_c.Call.Return(npmPackageDetail, err)
+	return _c
+}
+
+func (_c *MockTangy_NpmPackageGet_Call) RunAndReturn(run func(ctx context.Context, repositoryHref string, name string, version string) (NpmPackageDetail, error)) *MockTangy_NpmPackageGet_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// NpmPackageList provides a mock function for the type MockTangy
+func (_mock *MockTangy) NpmPackageList(ctx context.Context, repositoryHref string, filterOpts NpmPackageListFilters, pageOpts PageOptions) (NpmPackageListResponse, error) {
+	ret := _mock.Called(ctx, repositoryHref, filterOpts, pageOpts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for NpmPackageList")
+	}
+
+	var r0 NpmPackageListResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, NpmPackageListFilters, PageOptions) (NpmPackageListResponse, error)); ok {
+		return returnFunc(ctx, repositoryHref, filterOpts, pageOpts)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, NpmPackageListFilters, PageOptions) NpmPackageListResponse); ok {
+		r0 = returnFunc(ctx, repositoryHref, filterOpts, pageOpts)
+	} else {
+		r0 = ret.Get(0).(NpmPackageListResponse)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, NpmPackageListFilters, PageOptions) error); ok {
+		r1 = returnFunc(ctx, repositoryHref, filterOpts, pageOpts)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTangy_NpmPackageList_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NpmPackageList'
+type MockTangy_NpmPackageList_Call struct {
+	*mock.Call
+}
+
+// NpmPackageList is a helper method to define mock.On call
+//   - ctx context.Context
+//   - repositoryHref string
+//   - filterOpts NpmPackageListFilters
+//   - pageOpts PageOptions
+func (_e *MockTangy_Expecter) NpmPackageList(ctx any, repositoryHref any, filterOpts any, pageOpts any) *MockTangy_NpmPackageList_Call {
+	return &MockTangy_NpmPackageList_Call{Call: _e.mock.On("NpmPackageList", ctx, repositoryHref, filterOpts, pageOpts)}
+}
+
+func (_c *MockTangy_NpmPackageList_Call) Run(run func(ctx context.Context, repositoryHref string, filterOpts NpmPackageListFilters, pageOpts PageOptions)) *MockTangy_NpmPackageList_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 NpmPackageListFilters
+		if args[2] != nil {
+			arg2 = args[2].(NpmPackageListFilters)
+		}
+		var arg3 PageOptions
+		if args[3] != nil {
+			arg3 = args[3].(PageOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTangy_NpmPackageList_Call) Return(npmPackageListResponse NpmPackageListResponse, err error) *MockTangy_NpmPackageList_Call {
+	_c.Call.Return(npmPackageListResponse, err)
+	return _c
+}
+
+func (_c *MockTangy_NpmPackageList_Call) RunAndReturn(run func(ctx context.Context, repositoryHref string, filterOpts NpmPackageListFilters, pageOpts PageOptions) (NpmPackageListResponse, error)) *MockTangy_NpmPackageList_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// NpmPackageVersionsGet provides a mock function for the type MockTangy
+func (_mock *MockTangy) NpmPackageVersionsGet(ctx context.Context, repositoryHref string, name string) ([]NpmPackageDetail, error) {
+	ret := _mock.Called(ctx, repositoryHref, name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for NpmPackageVersionsGet")
+	}
+
+	var r0 []NpmPackageDetail
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) ([]NpmPackageDetail, error)); ok {
+		return returnFunc(ctx, repositoryHref, name)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) []NpmPackageDetail); ok {
+		r0 = returnFunc(ctx, repositoryHref, name)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]NpmPackageDetail)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = returnFunc(ctx, repositoryHref, name)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTangy_NpmPackageVersionsGet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NpmPackageVersionsGet'
+type MockTangy_NpmPackageVersionsGet_Call struct {
+	*mock.Call
+}
+
+// NpmPackageVersionsGet is a helper method to define mock.On call
+//   - ctx context.Context
+//   - repositoryHref string
+//   - name string
+func (_e *MockTangy_Expecter) NpmPackageVersionsGet(ctx any, repositoryHref any, name any) *MockTangy_NpmPackageVersionsGet_Call {
+	return &MockTangy_NpmPackageVersionsGet_Call{Call: _e.mock.On("NpmPackageVersionsGet", ctx, repositoryHref, name)}
+}
+
+func (_c *MockTangy_NpmPackageVersionsGet_Call) Run(run func(ctx context.Context, repositoryHref string, name string)) *MockTangy_NpmPackageVersionsGet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTangy_NpmPackageVersionsGet_Call) Return(npmPackageDetails []NpmPackageDetail, err error) *MockTangy_NpmPackageVersionsGet_Call {
+	_c.Call.Return(npmPackageDetails, err)
+	return _c
+}
+
+func (_c *MockTangy_NpmPackageVersionsGet_Call) RunAndReturn(run func(ctx context.Context, repositoryHref string, name string) ([]NpmPackageDetail, error)) *MockTangy_NpmPackageVersionsGet_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PythonBuildList provides a mock function for the type MockTangy
 func (_mock *MockTangy) PythonBuildList(ctx context.Context, repositoryHref string, nameNormalized string, version string, pageOpts PageOptions) (PythonBuildListResponse, error) {
 	ret := _mock.Called(ctx, repositoryHref, nameNormalized, version, pageOpts)
