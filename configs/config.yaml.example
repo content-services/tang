@@ -15,4 +15,3 @@ server:
   storage_type: "local"
   download_policy: "on_demand"
   content_path_prefix: "/api/pulp-content/"
-  maven_fixture_url: "http://host.containers.internal:8089"

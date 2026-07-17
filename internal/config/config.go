@@ -54,7 +54,6 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.storage_type", "")
 	v.SetDefault("server.download_policy", "")
 	v.SetDefault("server.content_path_prefix", "/api/pulp-content/")
-	v.SetDefault("server.maven_fixture_url", "")
 }
 
 // Server configuration options for connecting to a pulp server
@@ -66,7 +65,6 @@ type Server struct {
 	StorageType       string `mapstructure:"storage_type"`
 	DownloadPolicy    string `mapstructure:"download_policy"`
 	ContentPathPrefix string `mapstructure:"content_path_prefix"`
-	MavenFixtureUrl   string `mapstructure:"maven_fixture_url"`
 }
 
 // Database configuration options for connection to a pulp database. Duplicated of tangy.Database.

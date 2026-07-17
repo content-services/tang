@@ -53,10 +53,6 @@ jobs:
           PULP_DATABASE_PORT: 5434
           PULP_API_PORT: 8087
           PULP_CONTENT_PORT: 8088
-      - name: Start maven fixture
-        run: |
-          docker run -d --name maven_fixture -v ${{ github.workspace }}/compose_files/pulp/assets/maven-fixture:/usr/share/nginx/html:ro nginx:alpine
-          docker network connect pulp_default maven_fixture
       - name: Wait for pulp
         run: |
           docker run --network=host --rm -v ${PWD}:/local curlimages/curl  \
@@ -74,6 +70,5 @@ jobs:
           SERVER_URL: http://localhost:8087
           SERVER_CONTENT_URL: http://localhost:8088
           SERVER_CONTENT_PATH_PREFIX: /pulp/content/
-          SERVER_MAVEN_FIXTURE_URL: http://maven_fixture/
           SERVER_USERNAME: admin
           SERVER_PASSWORD: password
