@@ -138,10 +138,10 @@ func (t *tangyImpl) MavenPackageList(ctx context.Context, repositoryHref string,
 			SELECT
 				rp.group_id,
 				rp.artifact_id,
-				rp.version,
+				regexp_replace(rp.version, '\.` + mavenReleaseQualifierPattern + `$', '') as base_version,
 				rp.filename,
 				cc.pulp_created,
-				ROW_NUMBER() OVER (PARTITION BY rp.group_id, rp.artifact_id, rp.version ORDER BY cc.pulp_created DESC) as rn
+				ROW_NUMBER() OVER (PARTITION BY rp.group_id, rp.artifact_id, regexp_replace(rp.version, '\.` + mavenReleaseQualifierPattern + `$', '') ORDER BY cc.pulp_created DESC) as rn
 			FROM maven_mavenartifact rp
 			INNER JOIN core_content cc ON rp.content_ptr_id = cc.pulp_id
 		` + innerUnion + artifactFilters + `
@@ -150,7 +150,7 @@ func (t *tangyImpl) MavenPackageList(ctx context.Context, repositoryHref string,
 			SELECT
 				group_id,
 				artifact_id,
-				version,
+				base_version,
 				filename,
 				pulp_created
 			FROM package_versions
@@ -160,7 +160,7 @@ func (t *tangyImpl) MavenPackageList(ctx context.Context, repositoryHref string,
 			SELECT
 				group_id,
 				artifact_id,
-				ARRAY_AGG(DISTINCT version ORDER BY version) as versions
+				ARRAY_AGG(DISTINCT base_version ORDER BY base_version) as versions
 			FROM latest_per_version
 			GROUP BY group_id, artifact_id
 			ORDER BY group_id, artifact_id
@@ -173,12 +173,12 @@ func (t *tangyImpl) MavenPackageList(ctx context.Context, repositoryHref string,
 			COALESCE(
 				JSON_AGG(
 					JSON_BUILD_OBJECT(
-						'version', lpv.version,
+						'version', lpv.base_version,
 						'release', '',
 						'filename', lpv.filename,
 						'created_at', lpv.pulp_created
-					) ORDER BY lpv.version
-				) FILTER (WHERE lpv.version IS NOT NULL),
+					) ORDER BY lpv.base_version
+				) FILTER (WHERE lpv.base_version IS NOT NULL),
 				'[]'::json
 			) as latest_releases_json
 		FROM packages p
@@ -358,7 +358,7 @@ func (t *tangyImpl) MavenBuildList(ctx context.Context, repositoryHref, groupID,
 	}
 	if version != "" {
 		args["version"] = version
-		whereClause += "\n\t\tAND rp.version = @version"
+		whereClause += "\n\t\tAND regexp_replace(rp.version, '\\." + mavenReleaseQualifierPattern + "$', '') = @version"
 	}
 
 	innerUnion, err := contentIdsInVersions(ctx, conn, repoVerMap, &args)
@@ -408,7 +408,7 @@ func (t *tangyImpl) MavenBuildList(ctx context.Context, repositoryHref, groupID,
 		results[i] = MavenBuildListItem{
 			GroupID:    artifact.GroupID,
 			ArtifactID: artifact.ArtifactID,
-			Version:    artifact.Version,
+			Version:    stripMavenReleaseVersion(artifact.Version),
 			Release:    extractRelease(artifact.Filename),
 			Filename:   artifact.Filename,
 			CreatedAt:  artifact.CreatedAt.Format(time.RFC3339),

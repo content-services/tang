@@ -48,19 +48,25 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("database.name", "")
 
 	v.SetDefault("server.url", "")
+	v.SetDefault("server.content_url", "")
 	v.SetDefault("server.username", "")
 	v.SetDefault("server.password", "")
 	v.SetDefault("server.storage_type", "")
 	v.SetDefault("server.download_policy", "")
+	v.SetDefault("server.content_path_prefix", "/api/pulp-content/")
+	v.SetDefault("server.maven_fixture_url", "")
 }
 
 // Server configuration options for connecting to a pulp server
 type Server struct {
-	Url            string `mapstructure:"url"`
-	Username       string `mapstructure:"username"`
-	Password       string `mapstructure:"password"`
-	StorageType    string `mapstructure:"storage_type"`
-	DownloadPolicy string `mapstructure:"download_policy"`
+	Url               string `mapstructure:"url"`
+	ContentUrl        string `mapstructure:"content_url"`
+	Username          string `mapstructure:"username"`
+	Password          string `mapstructure:"password"`
+	StorageType       string `mapstructure:"storage_type"`
+	DownloadPolicy    string `mapstructure:"download_policy"`
+	ContentPathPrefix string `mapstructure:"content_path_prefix"`
+	MavenFixtureUrl   string `mapstructure:"maven_fixture_url"`
 }
 
 // Database configuration options for connection to a pulp database. Duplicated of tangy.Database.

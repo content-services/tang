@@ -54,12 +54,6 @@ services:
     healthcheck:
       test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
 
-  maven_fixture:
-    image: "docker.io/library/nginx:alpine"
-    volumes:
-      - "./assets/maven-fixture:/usr/share/nginx/html:ro"
-    restart: always
-
   pulp_api:
     image: "quay.io/redhat-services-prod/pulp-services-tenant/pulp:latest"
     platform: linux/amd64

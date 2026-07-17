@@ -9,7 +9,10 @@ database:
 # Configuration options for the pulp server
 server:
   url: "http://localhost:8087"
+  content_url: "http://localhost:8088"
   username: "admin"
   password: "password"
   storage_type: "local"
   download_policy: "on_demand"
+  content_path_prefix: "/api/pulp-content/"
+  maven_fixture_url: "http://host.containers.internal:8089"
