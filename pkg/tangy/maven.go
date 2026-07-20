@@ -36,34 +36,31 @@ type MavenPackageListResponse struct {
 	Offset  int                    `json:"offset"`
 }
 
-type MavenBuildListItem struct {
-	GroupID    string `json:"group_id"`
-	ArtifactID string `json:"artifact_id"`
-	Version    string `json:"version"`
-	Release    string `json:"release"`
-	Filename   string `json:"filename"`
-	CreatedAt  string `json:"created_at"`
+type MavenBuildInfo struct {
+	Version   string `json:"version"`
+	Release   string `json:"release"`
+	Filename  string `json:"filename"`
+	CreatedAt string `json:"created_at"`
 }
 
-type MavenBuildListResponse struct {
-	Results []MavenBuildListItem `json:"results"`
-	Total   int                  `json:"total"`
-	Limit   int                  `json:"limit"`
-	Offset  int                  `json:"offset"`
+type MavenVersionsItem struct {
+	GroupID    string           `json:"group_id"`
+	ArtifactID string           `json:"artifact_id"`
+	Version    string           `json:"version"`
+	Builds     []MavenBuildInfo `json:"builds"`
+}
+
+type MavenVersionsResponse struct {
+	Results []MavenVersionsItem `json:"results"`
+	Total   int                 `json:"total"`
+	Limit   int                 `json:"limit"`
+	Offset  int                 `json:"offset"`
 }
 
 type MavenRepositoryMetrics struct {
 	PackageCount int `json:"package_count"`
 	BuildCount   int `json:"build_count"`
 	VersionCount int `json:"version_count"`
-}
-
-type mavenArtifactQueryResult struct {
-	GroupID    string
-	ArtifactID string
-	Version    string
-	Filename   string
-	CreatedAt  time.Time
 }
 
 // MavenPackageList lists Maven packages from the latest version of a repository, grouped by group_id and artifact_id
@@ -310,16 +307,16 @@ func getLatestRepositoryVersion(ctx context.Context, conn *pgxpool.Conn, repoUUI
 	return latestVersion, nil
 }
 
-// MavenBuildList lists all Maven artifacts (builds), optionally filtered by group_id, artifact_id, and version
+// MavenVersionsList lists all Maven artifacts (builds), optionally filtered by group_id, artifact_id, and version
 // from the latest version of a repository
-func (t *tangyImpl) MavenBuildList(ctx context.Context, repositoryHref, groupID, artifactID, version string, pageOpts PageOptions) (MavenBuildListResponse, error) {
+func (t *tangyImpl) MavenVersionsList(ctx context.Context, repositoryHref, groupID, artifactID, version string, pageOpts PageOptions) (MavenVersionsResponse, error) {
 	if repositoryHref == "" {
-		return MavenBuildListResponse{}, nil
+		return MavenVersionsResponse{}, nil
 	}
 
 	conn, err := t.pool.Acquire(ctx)
 	if err != nil {
-		return MavenBuildListResponse{}, err
+		return MavenVersionsResponse{}, err
 	}
 	defer conn.Release()
 
@@ -330,13 +327,13 @@ func (t *tangyImpl) MavenBuildList(ctx context.Context, repositoryHref, groupID,
 	// Parse repository UUID from href
 	repoUUID, err := parseRepositoryHref(repositoryHref)
 	if err != nil {
-		return MavenBuildListResponse{}, fmt.Errorf("error parsing repository href: %w", err)
+		return MavenVersionsResponse{}, fmt.Errorf("error parsing repository href: %w", err)
 	}
 
 	// Get the latest version for this repository
 	latestVersion, err := getLatestRepositoryVersion(ctx, conn, repoUUID)
 	if err != nil {
-		return MavenBuildListResponse{}, fmt.Errorf("error getting latest repository version: %w", err)
+		return MavenVersionsResponse{}, fmt.Errorf("error getting latest repository version: %w", err)
 	}
 
 	repoVerMap := []ParsedRepoVersion{{
@@ -363,59 +360,117 @@ func (t *tangyImpl) MavenBuildList(ctx context.Context, repositoryHref, groupID,
 
 	innerUnion, err := contentIdsInVersions(ctx, conn, repoVerMap, &args)
 	if err != nil {
-		return MavenBuildListResponse{}, err
+		return MavenVersionsResponse{}, err
 	}
 
-	// Count query for total artifacts
-	countQuery := `
-		SELECT COUNT(*)
-		FROM maven_mavenartifact rp
-	` + innerUnion + whereClause + `
+	pomFilter := `
 		AND rp.filename LIKE '%.pom'`
+
+	// Count query for total distinct versions
+	countQuery := `
+		SELECT COUNT(DISTINCT (rp.group_id, rp.artifact_id, regexp_replace(rp.version, '\.` + mavenReleaseQualifierPattern + `$', '')))
+		FROM maven_mavenartifact rp
+	` + innerUnion + whereClause + pomFilter
 
 	var countTotal int
 	err = conn.QueryRow(ctx, countQuery, args).Scan(&countTotal)
 	if err != nil {
-		return MavenBuildListResponse{}, err
+		return MavenVersionsResponse{}, err
 	}
-
-	// Main query to get all matching artifacts
-	query := `
-		SELECT rp.group_id, rp.artifact_id, rp.version, rp.filename, cc.pulp_created as created_at
-		FROM maven_mavenartifact rp
-		INNER JOIN core_content cc ON rp.content_ptr_id = cc.pulp_id
-	` + innerUnion + whereClause + `
-		AND rp.filename LIKE '%.pom'
-		ORDER BY cc.pulp_created DESC
-		LIMIT @limit OFFSET @offset`
 
 	args["limit"] = pageOpts.Limit
 	args["offset"] = pageOpts.Offset
 
+	query := `
+		WITH version_builds AS (
+			SELECT
+				rp.group_id,
+				rp.artifact_id,
+				regexp_replace(rp.version, '\.` + mavenReleaseQualifierPattern + `$', '') as base_version,
+				rp.filename,
+				cc.pulp_created as created_at
+			FROM maven_mavenartifact rp
+			INNER JOIN core_content cc ON rp.content_ptr_id = cc.pulp_id
+		` + innerUnion + whereClause + pomFilter + `
+		),
+		distinct_versions AS (
+			SELECT
+				group_id,
+				artifact_id,
+				base_version,
+				MAX(created_at) as latest_created_at
+			FROM version_builds
+			GROUP BY group_id, artifact_id, base_version
+			ORDER BY latest_created_at DESC
+			LIMIT @limit OFFSET @offset
+		)
+		SELECT
+			dv.group_id,
+			dv.artifact_id,
+			dv.base_version as version,
+			COALESCE(
+				JSON_AGG(
+					JSON_BUILD_OBJECT(
+						'version', vb.base_version,
+						'filename', vb.filename,
+						'created_at', vb.created_at
+					) ORDER BY vb.created_at DESC
+				),
+				'[]'::json
+			) as builds_json
+		FROM distinct_versions dv
+		INNER JOIN version_builds vb ON dv.group_id = vb.group_id AND dv.artifact_id = vb.artifact_id AND dv.base_version = vb.base_version
+		GROUP BY dv.group_id, dv.artifact_id, dv.base_version, dv.latest_created_at
+		ORDER BY dv.latest_created_at DESC`
+
 	rows, err := conn.Query(ctx, query, args)
 	if err != nil {
-		return MavenBuildListResponse{}, err
+		return MavenVersionsResponse{}, err
 	}
 
-	artifacts, err := pgx.CollectRows(rows, pgx.RowToStructByName[mavenArtifactQueryResult])
+	type buildQueryResult struct {
+		GroupID    string
+		ArtifactID string
+		Version    string
+		BuildsJSON []byte
+	}
+
+	queryResults, err := pgx.CollectRows(rows, pgx.RowToStructByName[buildQueryResult])
 	if err != nil {
-		return MavenBuildListResponse{}, err
+		return MavenVersionsResponse{}, err
 	}
 
-	// Convert to response format
-	results := make([]MavenBuildListItem, len(artifacts))
-	for i, artifact := range artifacts {
-		results[i] = MavenBuildListItem{
-			GroupID:    artifact.GroupID,
-			ArtifactID: artifact.ArtifactID,
-			Version:    stripMavenReleaseVersion(artifact.Version),
-			Release:    extractRelease(artifact.Filename),
-			Filename:   artifact.Filename,
-			CreatedAt:  artifact.CreatedAt.Format(time.RFC3339),
+	results := make([]MavenVersionsItem, 0, len(queryResults))
+	for _, qr := range queryResults {
+		var builds []struct {
+			Version   string    `json:"version"`
+			Filename  string    `json:"filename"`
+			CreatedAt time.Time `json:"created_at"`
 		}
+
+		if err := json.Unmarshal(qr.BuildsJSON, &builds); err != nil {
+			return MavenVersionsResponse{}, fmt.Errorf("failed to parse builds: %w", err)
+		}
+
+		buildInfos := make([]MavenBuildInfo, 0, len(builds))
+		for _, b := range builds {
+			buildInfos = append(buildInfos, MavenBuildInfo{
+				Version:   b.Version,
+				Release:   extractRelease(b.Filename),
+				Filename:  b.Filename,
+				CreatedAt: b.CreatedAt.Format(time.RFC3339),
+			})
+		}
+
+		results = append(results, MavenVersionsItem{
+			GroupID:    qr.GroupID,
+			ArtifactID: qr.ArtifactID,
+			Version:    qr.Version,
+			Builds:     buildInfos,
+		})
 	}
 
-	return MavenBuildListResponse{
+	return MavenVersionsResponse{
 		Results: results,
 		Total:   countTotal,
 		Limit:   pageOpts.Limit,

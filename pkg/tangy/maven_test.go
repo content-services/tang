@@ -224,7 +224,7 @@ func TestMockTangyMavenPackageList(t *testing.T) {
 	assert.Equal(t, expected, got)
 }
 
-func TestMockTangyMavenBuildList(t *testing.T) {
+func TestMockTangyMavenVersionsList(t *testing.T) {
 	t.Parallel()
 
 	mockTangy := NewMockTangy(t)
@@ -232,15 +232,20 @@ func TestMockTangyMavenBuildList(t *testing.T) {
 	repoHref := "/api/pulp/default/api/v3/repositories/maven/maven/018c1c95-4281-76eb-b277-842cbad524f4/"
 	pageOpts := PageOptions{Offset: 0, Limit: 10}
 
-	expected := MavenBuildListResponse{
-		Results: []MavenBuildListItem{
+	expected := MavenVersionsResponse{
+		Results: []MavenVersionsItem{
 			{
 				GroupID:    "junit",
 				ArtifactID: "junit",
 				Version:    "4.13.2",
-				Release:    "",
-				Filename:   "junit-4.13.2.pom",
-				CreatedAt:  "2024-01-01T12:00:00Z",
+				Builds: []MavenBuildInfo{
+					{
+						Version:   "4.13.2",
+						Release:   "",
+						Filename:  "junit-4.13.2.pom",
+						CreatedAt: "2024-01-01T12:00:00Z",
+					},
+				},
 			},
 		},
 		Total:  1,
@@ -248,9 +253,9 @@ func TestMockTangyMavenBuildList(t *testing.T) {
 		Offset: 0,
 	}
 
-	mockTangy.On("MavenBuildList", ctx, repoHref, "junit", "junit", "4.13.2", pageOpts).Return(expected, nil)
+	mockTangy.On("MavenVersionsList", ctx, repoHref, "junit", "junit", "4.13.2", pageOpts).Return(expected, nil)
 
-	got, err := mockTangy.MavenBuildList(ctx, repoHref, "junit", "junit", "4.13.2", pageOpts)
+	got, err := mockTangy.MavenVersionsList(ctx, repoHref, "junit", "junit", "4.13.2", pageOpts)
 	require.NoError(t, err)
 	assert.Equal(t, expected, got)
 }

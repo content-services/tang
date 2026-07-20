@@ -72,7 +72,7 @@ type Tangy interface {
 	PythonBuildList(ctx context.Context, repositoryHref, nameNormalized, version string, pageOpts PageOptions) (PythonBuildListResponse, error)
 	PythonRepositoryMetrics(ctx context.Context, repositoryHref string) (PythonRepositoryMetrics, error)
 	MavenPackageList(ctx context.Context, repositoryHref string, filterOpts MavenPackageListFilters, pageOpts PageOptions) (MavenPackageListResponse, error)
-	MavenBuildList(ctx context.Context, repositoryHref, groupID, artifactID, version string, pageOpts PageOptions) (MavenBuildListResponse, error)
+	MavenVersionsList(ctx context.Context, repositoryHref, groupID, artifactID, version string, pageOpts PageOptions) (MavenVersionsResponse, error)
 	MavenRepositoryMetrics(ctx context.Context, repositoryHref string) (MavenRepositoryMetrics, error)
 	NpmPackageList(ctx context.Context, repositoryHref string, filterOpts NpmPackageListFilters, pageOpts PageOptions) (NpmPackageListResponse, error)
 	NpmPackageGet(ctx context.Context, repositoryHref, name, version string) (NpmPackageDetail, error)

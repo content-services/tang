@@ -18,7 +18,7 @@ import (
 const (
 	testMavenRepoName             = "maven-releases-fixture"
 	testMavenDistributionBasePath = "maven-releases-fixture"
-	testMavenFixtureUrl           = "https://rverdile.github.io/fixtures/maven/maven-releases/"
+	testMavenFixtureUrl           = "https://content-services.github.io/fixtures/maven/maven-releases/"
 	testMavenGroupID              = "com.example.fixture"
 	testMavenArtifactID           = "raccoon"
 	testMavenBaseVersion100       = "1.0.0"
@@ -170,8 +170,8 @@ func (m *MavenSuite) TestMavenPackageListEmptyHref() {
 	assert.Zero(m.T(), response.Total)
 }
 
-func (m *MavenSuite) TestMavenBuildList() {
-	response, err := m.tangy.MavenBuildList(
+func (m *MavenSuite) TestMavenVersionsList() {
+	response, err := m.tangy.MavenVersionsList(
 		context.Background(),
 		m.repositoryHref,
 		testMavenGroupID,
@@ -180,14 +180,18 @@ func (m *MavenSuite) TestMavenBuildList() {
 		tangy.PageOptions{Offset: 0, Limit: 10},
 	)
 	require.NoError(m.T(), err)
-	require.Len(m.T(), response.Results, 2)
-	assert.Equal(m.T(), 2, response.Total)
+	require.Len(m.T(), response.Results, 1)
+	assert.Equal(m.T(), 1, response.Total)
 	assert.Equal(m.T(), 10, response.Limit)
 
+	version := response.Results[0]
+	assert.Equal(m.T(), testMavenGroupID, version.GroupID)
+	assert.Equal(m.T(), testMavenArtifactID, version.ArtifactID)
+	assert.Equal(m.T(), testMavenBaseVersion100, version.Version)
+	require.Len(m.T(), version.Builds, 2)
+
 	foundReleases := make(map[string]bool)
-	for _, build := range response.Results {
-		assert.Equal(m.T(), testMavenGroupID, build.GroupID)
-		assert.Equal(m.T(), testMavenArtifactID, build.ArtifactID)
+	for _, build := range version.Builds {
 		assert.Equal(m.T(), testMavenBaseVersion100, build.Version)
 		assert.True(m.T(), strings.HasSuffix(build.Filename, ".pom"), build.Filename)
 		assert.NotEmpty(m.T(), build.CreatedAt)
@@ -197,25 +201,25 @@ func (m *MavenSuite) TestMavenBuildList() {
 	assert.True(m.T(), foundReleases["rhlw-00002"])
 }
 
-func (m *MavenSuite) TestMavenBuildListPagination() {
-	response, err := m.tangy.MavenBuildList(
+func (m *MavenSuite) TestMavenVersionsListPagination() {
+	response, err := m.tangy.MavenVersionsList(
 		context.Background(),
 		m.repositoryHref,
 		testMavenGroupID,
 		testMavenArtifactID,
-		testMavenBaseVersion100,
+		"",
 		tangy.PageOptions{Offset: 0, Limit: 1},
 	)
 	require.NoError(m.T(), err)
 	assert.Len(m.T(), response.Results, 1)
 	assert.Equal(m.T(), 2, response.Total)
 
-	response, err = m.tangy.MavenBuildList(
+	response, err = m.tangy.MavenVersionsList(
 		context.Background(),
 		m.repositoryHref,
 		testMavenGroupID,
 		testMavenArtifactID,
-		testMavenBaseVersion100,
+		"",
 		tangy.PageOptions{Offset: 2, Limit: 10},
 	)
 	require.NoError(m.T(), err)
@@ -223,15 +227,15 @@ func (m *MavenSuite) TestMavenBuildListPagination() {
 	assert.Equal(m.T(), 2, response.Total)
 }
 
-func (m *MavenSuite) TestMavenBuildListEmptyHref() {
-	response, err := m.tangy.MavenBuildList(context.Background(), "", testMavenGroupID, testMavenArtifactID, testMavenBaseVersion100, tangy.PageOptions{Limit: 10})
+func (m *MavenSuite) TestMavenVersionsListEmptyHref() {
+	response, err := m.tangy.MavenVersionsList(context.Background(), "", testMavenGroupID, testMavenArtifactID, testMavenBaseVersion100, tangy.PageOptions{Limit: 10})
 	require.NoError(m.T(), err)
 	assert.Empty(m.T(), response.Results)
 	assert.Zero(m.T(), response.Total)
 }
 
-func (m *MavenSuite) TestMavenBuildListOptionalFilters() {
-	response, err := m.tangy.MavenBuildList(
+func (m *MavenSuite) TestMavenVersionsListOptionalFilters() {
+	response, err := m.tangy.MavenVersionsList(
 		context.Background(),
 		m.repositoryHref,
 		"",
@@ -240,22 +244,24 @@ func (m *MavenSuite) TestMavenBuildListOptionalFilters() {
 		tangy.PageOptions{Offset: 0, Limit: 10},
 	)
 	require.NoError(m.T(), err)
-	require.NotEmpty(m.T(), response.Results)
-	assert.Equal(m.T(), 4, response.Total)
+	require.Len(m.T(), response.Results, 2)
+	assert.Equal(m.T(), 2, response.Total)
 
 	type versionRelease struct{ version, release string }
 	foundBuilds := make(map[versionRelease]bool)
-	for _, build := range response.Results {
-		assert.Equal(m.T(), testMavenGroupID, build.GroupID)
-		assert.Equal(m.T(), testMavenArtifactID, build.ArtifactID)
-		foundBuilds[versionRelease{build.Version, build.Release}] = true
+	for _, result := range response.Results {
+		assert.Equal(m.T(), testMavenGroupID, result.GroupID)
+		assert.Equal(m.T(), testMavenArtifactID, result.ArtifactID)
+		for _, build := range result.Builds {
+			foundBuilds[versionRelease{build.Version, build.Release}] = true
+		}
 	}
 	assert.True(m.T(), foundBuilds[versionRelease{testMavenBaseVersion100, "rhlw-00001"}])
 	assert.True(m.T(), foundBuilds[versionRelease{testMavenBaseVersion100, "rhlw-00002"}])
 	assert.True(m.T(), foundBuilds[versionRelease{testMavenBaseVersion200, "rhlw-00001"}])
 	assert.True(m.T(), foundBuilds[versionRelease{testMavenBaseVersion200, "rhlw-00002"}])
 
-	filtered, err := m.tangy.MavenBuildList(
+	filtered, err := m.tangy.MavenVersionsList(
 		context.Background(),
 		m.repositoryHref,
 		testMavenGroupID,
@@ -264,10 +270,10 @@ func (m *MavenSuite) TestMavenBuildListOptionalFilters() {
 		tangy.PageOptions{Offset: 0, Limit: 10},
 	)
 	require.NoError(m.T(), err)
-	require.Len(m.T(), filtered.Results, 4)
-	assert.Equal(m.T(), 4, filtered.Total)
+	require.Len(m.T(), filtered.Results, 2)
+	assert.Equal(m.T(), 2, filtered.Total)
 
-	filtered, err = m.tangy.MavenBuildList(
+	filtered, err = m.tangy.MavenVersionsList(
 		context.Background(),
 		m.repositoryHref,
 		"",
@@ -276,8 +282,8 @@ func (m *MavenSuite) TestMavenBuildListOptionalFilters() {
 		tangy.PageOptions{Offset: 0, Limit: 10},
 	)
 	require.NoError(m.T(), err)
-	require.Len(m.T(), filtered.Results, 4)
-	assert.Equal(m.T(), 4, filtered.Total)
+	require.Len(m.T(), filtered.Results, 2)
+	assert.Equal(m.T(), 2, filtered.Total)
 }
 
 func (m *MavenSuite) TestMavenRepositoryMetrics() {
