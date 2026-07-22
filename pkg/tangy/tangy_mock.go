@@ -70,23 +70,23 @@ func (_c *MockTangy_Close_Call) RunAndReturn(run func()) *MockTangy_Close_Call {
 	return _c
 }
 
-// MavenBuildList provides a mock function for the type MockTangy
-func (_mock *MockTangy) MavenBuildList(ctx context.Context, repositoryHref string, groupID string, artifactID string, version string, pageOpts PageOptions) (MavenBuildListResponse, error) {
+// MavenVersionsList provides a mock function for the type MockTangy
+func (_mock *MockTangy) MavenVersionsList(ctx context.Context, repositoryHref string, groupID string, artifactID string, version string, pageOpts PageOptions) (MavenVersionsResponse, error) {
 	ret := _mock.Called(ctx, repositoryHref, groupID, artifactID, version, pageOpts)
 
 	if len(ret) == 0 {
-		panic("no return value specified for MavenBuildList")
+		panic("no return value specified for MavenVersionsList")
 	}
 
-	var r0 MavenBuildListResponse
+	var r0 MavenVersionsResponse
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, string, PageOptions) (MavenBuildListResponse, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, string, PageOptions) (MavenVersionsResponse, error)); ok {
 		return returnFunc(ctx, repositoryHref, groupID, artifactID, version, pageOpts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, string, PageOptions) MavenBuildListResponse); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, string, PageOptions) MavenVersionsResponse); ok {
 		r0 = returnFunc(ctx, repositoryHref, groupID, artifactID, version, pageOpts)
 	} else {
-		r0 = ret.Get(0).(MavenBuildListResponse)
+		r0 = ret.Get(0).(MavenVersionsResponse)
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string, string, PageOptions) error); ok {
 		r1 = returnFunc(ctx, repositoryHref, groupID, artifactID, version, pageOpts)
@@ -96,23 +96,23 @@ func (_mock *MockTangy) MavenBuildList(ctx context.Context, repositoryHref strin
 	return r0, r1
 }
 
-// MockTangy_MavenBuildList_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MavenBuildList'
-type MockTangy_MavenBuildList_Call struct {
+// MockTangy_MavenVersionsList_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MavenVersionsList'
+type MockTangy_MavenVersionsList_Call struct {
 	*mock.Call
 }
 
-// MavenBuildList is a helper method to define mock.On call
+// MavenVersionsList is a helper method to define mock.On call
 //   - ctx context.Context
 //   - repositoryHref string
 //   - groupID string
 //   - artifactID string
 //   - version string
 //   - pageOpts PageOptions
-func (_e *MockTangy_Expecter) MavenBuildList(ctx any, repositoryHref any, groupID any, artifactID any, version any, pageOpts any) *MockTangy_MavenBuildList_Call {
-	return &MockTangy_MavenBuildList_Call{Call: _e.mock.On("MavenBuildList", ctx, repositoryHref, groupID, artifactID, version, pageOpts)}
+func (_e *MockTangy_Expecter) MavenVersionsList(ctx any, repositoryHref any, groupID any, artifactID any, version any, pageOpts any) *MockTangy_MavenVersionsList_Call {
+	return &MockTangy_MavenVersionsList_Call{Call: _e.mock.On("MavenVersionsList", ctx, repositoryHref, groupID, artifactID, version, pageOpts)}
 }
 
-func (_c *MockTangy_MavenBuildList_Call) Run(run func(ctx context.Context, repositoryHref string, groupID string, artifactID string, version string, pageOpts PageOptions)) *MockTangy_MavenBuildList_Call {
+func (_c *MockTangy_MavenVersionsList_Call) Run(run func(ctx context.Context, repositoryHref string, groupID string, artifactID string, version string, pageOpts PageOptions)) *MockTangy_MavenVersionsList_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -150,12 +150,12 @@ func (_c *MockTangy_MavenBuildList_Call) Run(run func(ctx context.Context, repos
 	return _c
 }
 
-func (_c *MockTangy_MavenBuildList_Call) Return(mavenBuildListResponse MavenBuildListResponse, err error) *MockTangy_MavenBuildList_Call {
-	_c.Call.Return(mavenBuildListResponse, err)
+func (_c *MockTangy_MavenVersionsList_Call) Return(mavenVersionsResponse MavenVersionsResponse, err error) *MockTangy_MavenVersionsList_Call {
+	_c.Call.Return(mavenVersionsResponse, err)
 	return _c
 }
 
-func (_c *MockTangy_MavenBuildList_Call) RunAndReturn(run func(ctx context.Context, repositoryHref string, groupID string, artifactID string, version string, pageOpts PageOptions) (MavenBuildListResponse, error)) *MockTangy_MavenBuildList_Call {
+func (_c *MockTangy_MavenVersionsList_Call) RunAndReturn(run func(ctx context.Context, repositoryHref string, groupID string, artifactID string, version string, pageOpts PageOptions) (MavenVersionsResponse, error)) *MockTangy_MavenVersionsList_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -123,9 +123,10 @@ func (m *MavenZest) CreateRepository(domain, name, remoteURL, distributionBasePa
 }
 
 // FetchArtifact triggers pull-through caching for an artifact path via the content app.
-func (m *MavenZest) FetchArtifact(contentOrigin, domain, distributionBasePath, artifactPath string) error {
+func (m *MavenZest) FetchArtifact(contentOrigin, contentPathPrefix, domain, distributionBasePath, artifactPath string) error {
 	artifactPath = strings.TrimPrefix(artifactPath, "/")
-	url := fmt.Sprintf("%s/pulp/content/%s/%s/%s", strings.TrimRight(contentOrigin, "/"), domain, distributionBasePath, artifactPath)
+	contentPathPrefix = strings.Trim(contentPathPrefix, "/")
+	url := fmt.Sprintf("%s/%s/%s/%s/%s", strings.TrimRight(contentOrigin, "/"), contentPathPrefix, domain, distributionBasePath, artifactPath)
 
 	resp, err := m.httpClient.Get(url)
 	if err != nil {
