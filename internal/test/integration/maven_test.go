@@ -50,7 +50,7 @@ func (m *MavenSuite) createTestRepository(t *testing.T) {
 	_, err := m.client.LookupOrCreateDomain(m.domainName)
 	require.NoError(t, err)
 
-	repoHref, remoteHref, err := m.client.CreateRepository(
+	repoHref, _, err := m.client.CreateRepository(
 		m.domainName,
 		testMavenRepoName,
 		testMavenFixtureUrl,
@@ -63,10 +63,8 @@ func (m *MavenSuite) createTestRepository(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	addTask, err := m.client.AddCachedContent(repoHref, remoteHref)
-	require.NoError(t, err)
-
-	_, err = m.client.PollTask(addTask)
+	// Current Pulp adds each pull-through download to the repository itself.
+	err = m.client.WaitForPullThrough(m.domainName, testMavenRepoName, len(testMavenArtifactPaths))
 	require.NoError(t, err)
 
 	m.repositoryHref = repoHref

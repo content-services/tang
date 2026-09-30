@@ -159,8 +159,48 @@ type pythonPackageDetailRow struct {
 	LatestVersionsJSON     []byte
 }
 
+// pythonPackageListOrderBy maps PageOptions.SortBy onto SQL ORDER BY clauses.
+// Allowed fields are name_normalized and last_updated. An empty or unknown
+// value sorts by last_updated descending. name_normalized defaults to ascending.
+// last_updated uses name_normalized ascending as a tie-breaker so pages stay stable.
+// The returned clauses contain only whitelisted identifiers.
+func pythonPackageListOrderBy(sortBy string) (paginationOrder, resultOrder string) {
+	field, direction := pythonPackageListSort(sortBy)
+	if field == "name_normalized" {
+		return "name_normalized " + direction, "pp.name_normalized " + direction + ", pv.version"
+	}
+	return "last_updated " + direction + ", name_normalized ASC",
+		"pp.last_updated " + direction + ", pp.name_normalized ASC, pv.version"
+}
+
+func pythonPackageListSort(sortBy string) (field, direction string) {
+	parts := strings.SplitN(strings.TrimSpace(sortBy), ":", 2)
+	requested := strings.TrimSpace(parts[0])
+	requestedDir := ""
+	if len(parts) == 2 {
+		requestedDir = strings.ToLower(strings.TrimSpace(parts[1]))
+	}
+
+	switch requested {
+	case "name_normalized":
+		if requestedDir == "desc" {
+			return "name_normalized", "DESC"
+		}
+		return "name_normalized", "ASC"
+	case "last_updated":
+		if requestedDir == "asc" {
+			return "last_updated", "ASC"
+		}
+		return "last_updated", "DESC"
+	default:
+		return "last_updated", "DESC"
+	}
+}
+
 // PythonPackageList lists Python packages from the latest version of a repository,
 // grouped by name_normalized with SQL-level pagination.
+// SortBy accepts name_normalized or last_updated, with an optional :asc or :desc
+// suffix. The default is last_updated descending (newest first).
 func (t *tangyImpl) PythonPackageList(ctx context.Context, repositoryHref string, filterOpts PythonPackageListFilters, pageOpts PageOptions) (PythonPackageListResponse, error) {
 	if repositoryHref == "" {
 		return PythonPackageListResponse{}, nil
@@ -217,6 +257,8 @@ func (t *tangyImpl) PythonPackageList(ctx context.Context, repositoryHref string
 		return PythonPackageListResponse{}, err
 	}
 
+	paginationOrder, resultOrder := pythonPackageListOrderBy(pageOpts.SortBy)
+
 	query := `
 		WITH filtered AS (
 			SELECT rp.name_normalized, rp.name, rp.version, cc.pulp_created
@@ -230,16 +272,16 @@ func (t *tangyImpl) PythonPackageList(ctx context.Context, repositoryHref string
 			GROUP BY name_normalized, version
 		),
 		paginated_packages AS (
-			SELECT name_normalized, MIN(name) AS name
+			SELECT name_normalized, MIN(name) AS name, MAX(created_at) AS last_updated
 			FROM package_versions
 			GROUP BY name_normalized
-			ORDER BY name_normalized
+			ORDER BY ` + paginationOrder + `
 			LIMIT @limit OFFSET @offset
 		)
 		SELECT pv.name_normalized, pv.name, pv.version, pv.created_at
 		FROM package_versions pv
 		INNER JOIN paginated_packages pp ON pv.name_normalized = pp.name_normalized
-		ORDER BY pv.name_normalized, pv.version`
+		ORDER BY ` + resultOrder
 
 	rows, err := conn.Query(ctx, query, args)
 	if err != nil {

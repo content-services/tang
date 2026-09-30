@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -115,11 +116,48 @@ func (m *MavenZest) CreateRepository(domain, name, remoteURL, distributionBasePa
 		return "", "", err
 	}
 
-	if _, err := m.PollTask(distResp.Task); err != nil {
+	distTask, err := m.PollTask(distResp.Task)
+	if err != nil {
+		return "", "", err
+	}
+	// New Pulp domains get a default identity content guard, which is copied onto
+	// distributions and rejects anonymous pull-through with 403. The fixture is public.
+	if err := m.clearDistributionContentGuard(distributionHref(distTask)); err != nil {
 		return "", "", err
 	}
 
 	return *repoResponse.PulpHref, *remoteResponse.PulpHref, nil
+}
+
+func distributionHref(task *zest.TaskResponse) string {
+	if task == nil {
+		return ""
+	}
+	for _, href := range task.GetCreatedResources() {
+		if strings.Contains(href, "/distributions/maven/maven/") {
+			return href
+		}
+	}
+	return ""
+}
+
+func (m *MavenZest) clearDistributionContentGuard(distHref string) error {
+	if distHref == "" {
+		return fmt.Errorf("maven distribution href missing from create task")
+	}
+
+	patch := zest.NewPatchedmavenMavenDistribution()
+	patch.SetContentGuardNil()
+	resp, httpResp, err := m.client.DistributionsMavenAPI.DistributionsMavenMavenPartialUpdate(m.ctx, normalizePulpHref(distHref)).
+		PatchedmavenMavenDistribution(*patch).Execute()
+	if httpResp != nil && httpResp.Body != nil {
+		defer httpResp.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+	_, err = m.PollTask(resp.Task)
+	return err
 }
 
 // FetchArtifact triggers pull-through caching for an artifact path via the content app.
@@ -140,20 +178,36 @@ func (m *MavenZest) FetchArtifact(contentOrigin, contentPathPrefix, domain, dist
 	return nil
 }
 
-// AddCachedContent adds pull-through cached Maven content into the repository.
-func (m *MavenZest) AddCachedContent(repoHref, remoteHref string) (string, error) {
-	addCached := zest.NewRepositoryAddCachedContent()
-	addCached.SetRemote(remoteHref)
+// WaitForPullThrough waits until pull-through downloads have been added to the repository.
+// Each download creates its own repository version on current Pulp.
+func (m *MavenZest) WaitForPullThrough(domain, repoName string, minVersion int) error {
+	deadline := time.Now().Add(60 * time.Second)
+	for {
+		repo, err := m.GetMavenRepositoryByName(domain, repoName)
+		if err != nil {
+			return err
+		}
+		if repo != nil && repositoryVersionNumber(repo.GetLatestVersionHref()) >= minVersion {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("maven repository %s did not reach version %d after pull-through", repoName, minVersion)
+		}
+		time.Sleep(time.Second)
+	}
+}
 
-	resp, httpResp, err := m.client.RepositoriesMavenAPI.RepositoriesMavenMavenAddCachedContent(m.ctx, normalizePulpHref(repoHref)).
-		RepositoryAddCachedContent(*addCached).Execute()
-	if httpResp != nil {
-		defer httpResp.Body.Close()
+func repositoryVersionNumber(href string) int {
+	href = strings.TrimRight(href, "/")
+	slash := strings.LastIndex(href, "/")
+	if slash < 0 {
+		return 0
 	}
+	number, err := strconv.Atoi(href[slash+1:])
 	if err != nil {
-		return "", err
+		return 0
 	}
-	return resp.Task, nil
+	return number
 }
 
 func (m *MavenZest) PollTask(taskHref string) (*zest.TaskResponse, error) {

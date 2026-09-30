@@ -150,6 +150,54 @@ func (r *RpmSuite) TestRpmRepositoryVersionPackageSearch() {
 	assert.Len(r.T(), search, 0)
 }
 
+// nullContentIDs clears content_ids for a repository so tangy uses the core_repositorycontent lookup.
+// Pulp now declares content_ids NOT NULL, so the constraint is removed for the test and put back afterward.
+func nullContentIDs(t *testing.T, conn *pgx.Conn, repoID string) {
+	t.Helper()
+	ctx := context.Background()
+
+	var contentIDsNotNull bool
+	err := conn.QueryRow(ctx, `
+		SELECT attnotnull
+		FROM pg_attribute
+		WHERE attrelid = 'core_repositoryversion'::regclass
+		  AND attname = 'content_ids'
+		  AND NOT attisdropped
+	`).Scan(&contentIDsNotNull)
+	require.NoError(t, err)
+
+	_, err = conn.Exec(ctx, `
+		CREATE TEMP TABLE tang_content_ids_backup AS
+		SELECT pulp_id, content_ids
+		FROM core_repositoryversion
+		WHERE repository_id = $1
+	`, repoID)
+	require.NoError(t, err)
+
+	if contentIDsNotNull {
+		_, err = conn.Exec(ctx, `ALTER TABLE core_repositoryversion ALTER COLUMN content_ids DROP NOT NULL`)
+		require.NoError(t, err)
+	}
+
+	t.Cleanup(func() {
+		_, err := conn.Exec(ctx, `
+			UPDATE core_repositoryversion crv
+			SET content_ids = backup.content_ids
+			FROM tang_content_ids_backup backup
+			WHERE crv.pulp_id = backup.pulp_id
+		`)
+		require.NoError(t, err)
+
+		if contentIDsNotNull {
+			_, err = conn.Exec(ctx, `ALTER TABLE core_repositoryversion ALTER COLUMN content_ids SET NOT NULL`)
+			require.NoError(t, err)
+		}
+	})
+
+	_, err = conn.Exec(ctx, `UPDATE core_repositoryversion SET content_ids = NULL WHERE repository_id = $1`, repoID)
+	require.NoError(t, err)
+}
+
 func getDBConnection(t *testing.T) *pgx.Conn {
 	dbConfig := config.Get().Database
 	db := tangy.Database{
@@ -168,13 +216,16 @@ func (r *RpmSuite) TestRpmRepositoryVersionPackageSearchOldMethod() {
 	firstVersionHref := &r.firstVersionHref
 
 	conn := getDBConnection(r.T())
-	defer conn.Close(context.Background())
+	// Close after the cleanup that restores content_ids. Cleanup runs last-added first.
+	r.T().Cleanup(func() {
+		conn.Close(context.Background())
+	})
 
-	// Update the repository version to use the old method
+	// Update the repository version to use the old method.
+	// Current Pulp rejects a null content_ids, so drop that constraint for this test and restore it after.
 	splitHref := strings.Split(*firstVersionHref, "/")
 	repoId := splitHref[len(splitHref)-4] // ignore trailing  versions//1/
-	_, err := conn.Exec(context.Background(), "UPDATE core_repositoryversion SET content_ids = null WHERE repository_id = $1", repoId)
-	require.NoError(r.T(), err)
+	nullContentIDs(r.T(), conn, repoId)
 
 	search, err := r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*firstVersionHref}, "peng", 100)
 	assert.NoError(r.T(), err)

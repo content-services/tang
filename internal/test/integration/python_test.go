@@ -22,6 +22,7 @@ const (
 	testPythonMultiVersionKeepCount = int64(2)
 	testPythonRepoURL               = "https://pypi.org/"
 	testPythonIncludes              = "shelf-reader"
+	testPythonSortRepoName          = "python-package-sort-fixture"
 )
 
 type PythonSuite struct {
@@ -139,6 +140,100 @@ func (p *PythonSuite) TestPythonPackageListPagination() {
 	require.NoError(p.T(), err)
 	assert.Empty(p.T(), response.Results)
 	assert.Equal(p.T(), 1, response.Total)
+}
+
+func (p *PythonSuite) TestPythonPackageListSort() {
+	repoHref, remoteHref, err := p.client.CreateRepository(
+		p.domainName,
+		testPythonSortRepoName,
+		testPythonRepoURL,
+		[]string{"sampleproject", "shelf-reader"},
+		0,
+	)
+	require.NoError(p.T(), err)
+
+	syncTask, err := p.client.SyncPythonRepository(repoHref, remoteHref)
+	require.NoError(p.T(), err)
+
+	_, err = p.client.PollTask(syncTask)
+	require.NoError(p.T(), err)
+
+	page := tangy.PageOptions{Offset: 0, Limit: 10}
+	list := func(sortBy string) tangy.PythonPackageListResponse {
+		p.T().Helper()
+		response, err := p.tangy.PythonPackageList(context.Background(), repoHref, tangy.PythonPackageListFilters{}, tangy.PageOptions{
+			Offset: page.Offset,
+			Limit:  page.Limit,
+			SortBy: sortBy,
+		})
+		require.NoError(p.T(), err)
+		return response
+	}
+
+	byUpdatedDesc := list("last_updated:desc")
+	require.GreaterOrEqual(p.T(), len(byUpdatedDesc.Results), 2)
+	assert.Equal(p.T(), len(byUpdatedDesc.Results), byUpdatedDesc.Total)
+
+	byDefault := list("")
+	assert.Equal(p.T(), packageNames(byUpdatedDesc.Results), packageNames(byDefault.Results))
+	assertPythonPackagesSorted(p.T(), byUpdatedDesc.Results, "last_updated", false)
+	assertPythonPackagesSorted(p.T(), list("last_updated:asc").Results, "last_updated", true)
+	assertPythonPackagesSorted(p.T(), list("name_normalized:asc").Results, "name_normalized", true)
+	assertPythonPackagesSorted(p.T(), list("name_normalized:desc").Results, "name_normalized", false)
+
+	secondPage, err := p.tangy.PythonPackageList(context.Background(), repoHref, tangy.PythonPackageListFilters{}, tangy.PageOptions{
+		Offset: 1,
+		Limit:  1,
+		SortBy: "name_normalized:asc",
+	})
+	require.NoError(p.T(), err)
+	require.Len(p.T(), secondPage.Results, 1)
+
+	byName := list("name_normalized:asc")
+	assert.Equal(p.T(), byName.Results[1].NameNormalized, secondPage.Results[0].NameNormalized)
+}
+
+func packageNames(items []tangy.PythonPackageListItem) []string {
+	names := make([]string, len(items))
+	for i, item := range items {
+		names[i] = item.NameNormalized
+	}
+	return names
+}
+
+func pythonPackageLastUpdated(item tangy.PythonPackageListItem) string {
+	var latest string
+	for _, version := range item.LatestVersions {
+		if version.CreatedAt > latest {
+			latest = version.CreatedAt
+		}
+	}
+	return latest
+}
+
+func assertPythonPackagesSorted(t *testing.T, items []tangy.PythonPackageListItem, field string, asc bool) {
+	t.Helper()
+	for i := 1; i < len(items); i++ {
+		prev, cur := items[i-1], items[i]
+		switch field {
+		case "name_normalized":
+			if asc {
+				assert.LessOrEqual(t, prev.NameNormalized, cur.NameNormalized)
+			} else {
+				assert.GreaterOrEqual(t, prev.NameNormalized, cur.NameNormalized)
+			}
+		default:
+			prevUpdated, curUpdated := pythonPackageLastUpdated(prev), pythonPackageLastUpdated(cur)
+			if asc {
+				assert.LessOrEqual(t, prevUpdated, curUpdated)
+			} else {
+				assert.GreaterOrEqual(t, prevUpdated, curUpdated)
+			}
+			if prevUpdated == curUpdated {
+				assert.LessOrEqual(t, prev.NameNormalized, cur.NameNormalized)
+			}
+		}
+	}
 }
 
 func (p *PythonSuite) TestPythonPackageListEmptyHref() {

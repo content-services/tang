@@ -51,6 +51,94 @@ func TestParsePythonRepositoryHref(t *testing.T) {
 	}
 }
 
+func TestPythonPackageListOrderBy(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name            string
+		sortBy          string
+		paginationOrder string
+		resultOrder     string
+	}{
+		{
+			name:            "empty defaults to last_updated desc",
+			sortBy:          "",
+			paginationOrder: "last_updated DESC, name_normalized ASC",
+			resultOrder:     "pp.last_updated DESC, pp.name_normalized ASC, pv.version",
+		},
+		{
+			name:            "whitespace defaults to last_updated desc",
+			sortBy:          "  ",
+			paginationOrder: "last_updated DESC, name_normalized ASC",
+			resultOrder:     "pp.last_updated DESC, pp.name_normalized ASC, pv.version",
+		},
+		{
+			name:            "last_updated without direction",
+			sortBy:          "last_updated",
+			paginationOrder: "last_updated DESC, name_normalized ASC",
+			resultOrder:     "pp.last_updated DESC, pp.name_normalized ASC, pv.version",
+		},
+		{
+			name:            "last_updated desc",
+			sortBy:          "last_updated:desc",
+			paginationOrder: "last_updated DESC, name_normalized ASC",
+			resultOrder:     "pp.last_updated DESC, pp.name_normalized ASC, pv.version",
+		},
+		{
+			name:            "last_updated asc",
+			sortBy:          "last_updated:asc",
+			paginationOrder: "last_updated ASC, name_normalized ASC",
+			resultOrder:     "pp.last_updated ASC, pp.name_normalized ASC, pv.version",
+		},
+		{
+			name:            "last_updated direction is case insensitive",
+			sortBy:          "last_updated:ASC",
+			paginationOrder: "last_updated ASC, name_normalized ASC",
+			resultOrder:     "pp.last_updated ASC, pp.name_normalized ASC, pv.version",
+		},
+		{
+			name:            "name_normalized without direction defaults to asc",
+			sortBy:          "name_normalized",
+			paginationOrder: "name_normalized ASC",
+			resultOrder:     "pp.name_normalized ASC, pv.version",
+		},
+		{
+			name:            "name_normalized asc",
+			sortBy:          "name_normalized:asc",
+			paginationOrder: "name_normalized ASC",
+			resultOrder:     "pp.name_normalized ASC, pv.version",
+		},
+		{
+			name:            "name_normalized desc",
+			sortBy:          "name_normalized:desc",
+			paginationOrder: "name_normalized DESC",
+			resultOrder:     "pp.name_normalized DESC, pv.version",
+		},
+		{
+			name:            "unknown field falls back to last_updated desc",
+			sortBy:          "version:asc",
+			paginationOrder: "last_updated DESC, name_normalized ASC",
+			resultOrder:     "pp.last_updated DESC, pp.name_normalized ASC, pv.version",
+		},
+		{
+			name:            "unknown direction keeps the field default",
+			sortBy:          "name_normalized:sideways",
+			paginationOrder: "name_normalized ASC",
+			resultOrder:     "pp.name_normalized ASC, pv.version",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			paginationOrder, resultOrder := pythonPackageListOrderBy(tt.sortBy)
+			assert.Equal(t, tt.paginationOrder, paginationOrder)
+			assert.Equal(t, tt.resultOrder, resultOrder)
+		})
+	}
+}
+
 func TestAssemblePythonPackageListFromRows(t *testing.T) {
 	t.Parallel()
 

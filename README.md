@@ -126,7 +126,7 @@ See example.go for a complete RPM example.
 
 Python support queries the `python_pythonpackagecontent` table. Each row is one installable distribution file (wheel, sdist, etc.).
 
-- **`PythonPackageList`** — lists packages in the latest repository version, grouped by `name_normalized`, with all versions and `latest_versions` (most recent `pulp_created` per version). Supports optional `Search` filter on `name` or `name_normalized`. Pagination is done in SQL.
+- **`PythonPackageList`** — lists packages in the latest repository version, grouped by `name_normalized`, with all versions and `latest_versions` (most recent `pulp_created` per version). Supports optional `Search` filter on `name` or `name_normalized`. Pagination is done in SQL. `PageOptions.SortBy` accepts `name_normalized` or `last_updated`, with an optional `:asc` or `:desc` suffix. The default is `last_updated:desc`.
 - **`PythonBuildList`** — lists builds (`name_normalized` + `version` pairs) in the latest repository version, optionally filtered by `name_normalized` and `version`. Pagination is done in SQL.
 - **`PythonRepositoryMetrics`** — returns `package_count` (distinct `name_normalized`) and `build_count` (distinct `name_normalized` + `version` pairs) for the latest repository version.
 - **`PythonDistributionList`** — lists distribution files for a given `name_normalized` and `version`. Pagination is done in SQL.
