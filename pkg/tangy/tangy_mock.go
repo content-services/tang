@@ -70,96 +70,6 @@ func (_c *MockTangy_Close_Call) RunAndReturn(run func()) *MockTangy_Close_Call {
 	return _c
 }
 
-// MavenVersionsList provides a mock function for the type MockTangy
-func (_mock *MockTangy) MavenVersionsList(ctx context.Context, repositoryHref string, groupID string, artifactID string, version string, pageOpts PageOptions) (MavenVersionsResponse, error) {
-	ret := _mock.Called(ctx, repositoryHref, groupID, artifactID, version, pageOpts)
-
-	if len(ret) == 0 {
-		panic("no return value specified for MavenVersionsList")
-	}
-
-	var r0 MavenVersionsResponse
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, string, PageOptions) (MavenVersionsResponse, error)); ok {
-		return returnFunc(ctx, repositoryHref, groupID, artifactID, version, pageOpts)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, string, PageOptions) MavenVersionsResponse); ok {
-		r0 = returnFunc(ctx, repositoryHref, groupID, artifactID, version, pageOpts)
-	} else {
-		r0 = ret.Get(0).(MavenVersionsResponse)
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string, string, PageOptions) error); ok {
-		r1 = returnFunc(ctx, repositoryHref, groupID, artifactID, version, pageOpts)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockTangy_MavenVersionsList_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MavenVersionsList'
-type MockTangy_MavenVersionsList_Call struct {
-	*mock.Call
-}
-
-// MavenVersionsList is a helper method to define mock.On call
-//   - ctx context.Context
-//   - repositoryHref string
-//   - groupID string
-//   - artifactID string
-//   - version string
-//   - pageOpts PageOptions
-func (_e *MockTangy_Expecter) MavenVersionsList(ctx any, repositoryHref any, groupID any, artifactID any, version any, pageOpts any) *MockTangy_MavenVersionsList_Call {
-	return &MockTangy_MavenVersionsList_Call{Call: _e.mock.On("MavenVersionsList", ctx, repositoryHref, groupID, artifactID, version, pageOpts)}
-}
-
-func (_c *MockTangy_MavenVersionsList_Call) Run(run func(ctx context.Context, repositoryHref string, groupID string, artifactID string, version string, pageOpts PageOptions)) *MockTangy_MavenVersionsList_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 string
-		if args[1] != nil {
-			arg1 = args[1].(string)
-		}
-		var arg2 string
-		if args[2] != nil {
-			arg2 = args[2].(string)
-		}
-		var arg3 string
-		if args[3] != nil {
-			arg3 = args[3].(string)
-		}
-		var arg4 string
-		if args[4] != nil {
-			arg4 = args[4].(string)
-		}
-		var arg5 PageOptions
-		if args[5] != nil {
-			arg5 = args[5].(PageOptions)
-		}
-		run(
-			arg0,
-			arg1,
-			arg2,
-			arg3,
-			arg4,
-			arg5,
-		)
-	})
-	return _c
-}
-
-func (_c *MockTangy_MavenVersionsList_Call) Return(mavenVersionsResponse MavenVersionsResponse, err error) *MockTangy_MavenVersionsList_Call {
-	_c.Call.Return(mavenVersionsResponse, err)
-	return _c
-}
-
-func (_c *MockTangy_MavenVersionsList_Call) RunAndReturn(run func(ctx context.Context, repositoryHref string, groupID string, artifactID string, version string, pageOpts PageOptions) (MavenVersionsResponse, error)) *MockTangy_MavenVersionsList_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // MavenPackageList provides a mock function for the type MockTangy
 func (_mock *MockTangy) MavenPackageList(ctx context.Context, repositoryHref string, filterOpts MavenPackageListFilters, pageOpts PageOptions) (MavenPackageListResponse, error) {
 	ret := _mock.Called(ctx, repositoryHref, filterOpts, pageOpts)
@@ -196,7 +106,7 @@ type MockTangy_MavenPackageList_Call struct {
 //   - repositoryHref string
 //   - filterOpts MavenPackageListFilters
 //   - pageOpts PageOptions
-func (_e *MockTangy_Expecter) MavenPackageList(ctx any, repositoryHref any, filterOpts any, pageOpts any) *MockTangy_MavenPackageList_Call {
+func (_e *MockTangy_Expecter) MavenPackageList(ctx interface{}, repositoryHref interface{}, filterOpts interface{}, pageOpts interface{}) *MockTangy_MavenPackageList_Call {
 	return &MockTangy_MavenPackageList_Call{Call: _e.mock.On("MavenPackageList", ctx, repositoryHref, filterOpts, pageOpts)}
 }
 
@@ -272,7 +182,7 @@ type MockTangy_MavenRepositoryMetrics_Call struct {
 // MavenRepositoryMetrics is a helper method to define mock.On call
 //   - ctx context.Context
 //   - repositoryHref string
-func (_e *MockTangy_Expecter) MavenRepositoryMetrics(ctx any, repositoryHref any) *MockTangy_MavenRepositoryMetrics_Call {
+func (_e *MockTangy_Expecter) MavenRepositoryMetrics(ctx interface{}, repositoryHref interface{}) *MockTangy_MavenRepositoryMetrics_Call {
 	return &MockTangy_MavenRepositoryMetrics_Call{Call: _e.mock.On("MavenRepositoryMetrics", ctx, repositoryHref)}
 }
 
@@ -300,6 +210,96 @@ func (_c *MockTangy_MavenRepositoryMetrics_Call) Return(mavenRepositoryMetrics M
 }
 
 func (_c *MockTangy_MavenRepositoryMetrics_Call) RunAndReturn(run func(ctx context.Context, repositoryHref string) (MavenRepositoryMetrics, error)) *MockTangy_MavenRepositoryMetrics_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MavenVersionsList provides a mock function for the type MockTangy
+func (_mock *MockTangy) MavenVersionsList(ctx context.Context, repositoryHref string, groupID string, artifactID string, version string, pageOpts PageOptions) (MavenVersionsResponse, error) {
+	ret := _mock.Called(ctx, repositoryHref, groupID, artifactID, version, pageOpts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MavenVersionsList")
+	}
+
+	var r0 MavenVersionsResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, string, PageOptions) (MavenVersionsResponse, error)); ok {
+		return returnFunc(ctx, repositoryHref, groupID, artifactID, version, pageOpts)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, string, PageOptions) MavenVersionsResponse); ok {
+		r0 = returnFunc(ctx, repositoryHref, groupID, artifactID, version, pageOpts)
+	} else {
+		r0 = ret.Get(0).(MavenVersionsResponse)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string, string, PageOptions) error); ok {
+		r1 = returnFunc(ctx, repositoryHref, groupID, artifactID, version, pageOpts)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTangy_MavenVersionsList_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MavenVersionsList'
+type MockTangy_MavenVersionsList_Call struct {
+	*mock.Call
+}
+
+// MavenVersionsList is a helper method to define mock.On call
+//   - ctx context.Context
+//   - repositoryHref string
+//   - groupID string
+//   - artifactID string
+//   - version string
+//   - pageOpts PageOptions
+func (_e *MockTangy_Expecter) MavenVersionsList(ctx interface{}, repositoryHref interface{}, groupID interface{}, artifactID interface{}, version interface{}, pageOpts interface{}) *MockTangy_MavenVersionsList_Call {
+	return &MockTangy_MavenVersionsList_Call{Call: _e.mock.On("MavenVersionsList", ctx, repositoryHref, groupID, artifactID, version, pageOpts)}
+}
+
+func (_c *MockTangy_MavenVersionsList_Call) Run(run func(ctx context.Context, repositoryHref string, groupID string, artifactID string, version string, pageOpts PageOptions)) *MockTangy_MavenVersionsList_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 string
+		if args[3] != nil {
+			arg3 = args[3].(string)
+		}
+		var arg4 string
+		if args[4] != nil {
+			arg4 = args[4].(string)
+		}
+		var arg5 PageOptions
+		if args[5] != nil {
+			arg5 = args[5].(PageOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+			arg5,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTangy_MavenVersionsList_Call) Return(mavenVersionsResponse MavenVersionsResponse, err error) *MockTangy_MavenVersionsList_Call {
+	_c.Call.Return(mavenVersionsResponse, err)
+	return _c
+}
+
+func (_c *MockTangy_MavenVersionsList_Call) RunAndReturn(run func(ctx context.Context, repositoryHref string, groupID string, artifactID string, version string, pageOpts PageOptions) (MavenVersionsResponse, error)) *MockTangy_MavenVersionsList_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -341,7 +341,7 @@ type MockTangy_NpmBuildList_Call struct {
 //   - name string
 //   - version string
 //   - pageOpts PageOptions
-func (_e *MockTangy_Expecter) NpmBuildList(ctx any, repositoryHref any, name any, version any, pageOpts any) *MockTangy_NpmBuildList_Call {
+func (_e *MockTangy_Expecter) NpmBuildList(ctx interface{}, repositoryHref interface{}, name interface{}, version interface{}, pageOpts interface{}) *MockTangy_NpmBuildList_Call {
 	return &MockTangy_NpmBuildList_Call{Call: _e.mock.On("NpmBuildList", ctx, repositoryHref, name, version, pageOpts)}
 }
 
@@ -424,7 +424,7 @@ type MockTangy_NpmPackageGet_Call struct {
 //   - repositoryHref string
 //   - name string
 //   - version string
-func (_e *MockTangy_Expecter) NpmPackageGet(ctx any, repositoryHref any, name any, version any) *MockTangy_NpmPackageGet_Call {
+func (_e *MockTangy_Expecter) NpmPackageGet(ctx interface{}, repositoryHref interface{}, name interface{}, version interface{}) *MockTangy_NpmPackageGet_Call {
 	return &MockTangy_NpmPackageGet_Call{Call: _e.mock.On("NpmPackageGet", ctx, repositoryHref, name, version)}
 }
 
@@ -502,7 +502,7 @@ type MockTangy_NpmPackageList_Call struct {
 //   - repositoryHref string
 //   - filterOpts NpmPackageListFilters
 //   - pageOpts PageOptions
-func (_e *MockTangy_Expecter) NpmPackageList(ctx any, repositoryHref any, filterOpts any, pageOpts any) *MockTangy_NpmPackageList_Call {
+func (_e *MockTangy_Expecter) NpmPackageList(ctx interface{}, repositoryHref interface{}, filterOpts interface{}, pageOpts interface{}) *MockTangy_NpmPackageList_Call {
 	return &MockTangy_NpmPackageList_Call{Call: _e.mock.On("NpmPackageList", ctx, repositoryHref, filterOpts, pageOpts)}
 }
 
@@ -581,7 +581,7 @@ type MockTangy_NpmPackageVersionsGet_Call struct {
 //   - ctx context.Context
 //   - repositoryHref string
 //   - name string
-func (_e *MockTangy_Expecter) NpmPackageVersionsGet(ctx any, repositoryHref any, name any) *MockTangy_NpmPackageVersionsGet_Call {
+func (_e *MockTangy_Expecter) NpmPackageVersionsGet(ctx interface{}, repositoryHref interface{}, name interface{}) *MockTangy_NpmPackageVersionsGet_Call {
 	return &MockTangy_NpmPackageVersionsGet_Call{Call: _e.mock.On("NpmPackageVersionsGet", ctx, repositoryHref, name)}
 }
 
@@ -655,7 +655,7 @@ type MockTangy_PythonBuildList_Call struct {
 //   - nameNormalized string
 //   - version string
 //   - pageOpts PageOptions
-func (_e *MockTangy_Expecter) PythonBuildList(ctx any, repositoryHref any, nameNormalized any, version any, pageOpts any) *MockTangy_PythonBuildList_Call {
+func (_e *MockTangy_Expecter) PythonBuildList(ctx interface{}, repositoryHref interface{}, nameNormalized interface{}, version interface{}, pageOpts interface{}) *MockTangy_PythonBuildList_Call {
 	return &MockTangy_PythonBuildList_Call{Call: _e.mock.On("PythonBuildList", ctx, repositoryHref, nameNormalized, version, pageOpts)}
 }
 
@@ -739,7 +739,7 @@ type MockTangy_PythonDistributionList_Call struct {
 //   - nameNormalized string
 //   - version string
 //   - pageOpts PageOptions
-func (_e *MockTangy_Expecter) PythonDistributionList(ctx any, repositoryHref any, nameNormalized any, version any, pageOpts any) *MockTangy_PythonDistributionList_Call {
+func (_e *MockTangy_Expecter) PythonDistributionList(ctx interface{}, repositoryHref interface{}, nameNormalized interface{}, version interface{}, pageOpts interface{}) *MockTangy_PythonDistributionList_Call {
 	return &MockTangy_PythonDistributionList_Call{Call: _e.mock.On("PythonDistributionList", ctx, repositoryHref, nameNormalized, version, pageOpts)}
 }
 
@@ -894,7 +894,7 @@ type MockTangy_PythonPackageGet_Call struct {
 //   - repositoryHref string
 //   - nameNormalized string
 //   - version string
-func (_e *MockTangy_Expecter) PythonPackageGet(ctx any, repositoryHref any, nameNormalized any, version any) *MockTangy_PythonPackageGet_Call {
+func (_e *MockTangy_Expecter) PythonPackageGet(ctx interface{}, repositoryHref interface{}, nameNormalized interface{}, version interface{}) *MockTangy_PythonPackageGet_Call {
 	return &MockTangy_PythonPackageGet_Call{Call: _e.mock.On("PythonPackageGet", ctx, repositoryHref, nameNormalized, version)}
 }
 
@@ -972,7 +972,7 @@ type MockTangy_PythonPackageList_Call struct {
 //   - repositoryHref string
 //   - filterOpts PythonPackageListFilters
 //   - pageOpts PageOptions
-func (_e *MockTangy_Expecter) PythonPackageList(ctx any, repositoryHref any, filterOpts any, pageOpts any) *MockTangy_PythonPackageList_Call {
+func (_e *MockTangy_Expecter) PythonPackageList(ctx interface{}, repositoryHref interface{}, filterOpts interface{}, pageOpts interface{}) *MockTangy_PythonPackageList_Call {
 	return &MockTangy_PythonPackageList_Call{Call: _e.mock.On("PythonPackageList", ctx, repositoryHref, filterOpts, pageOpts)}
 }
 
@@ -1051,7 +1051,7 @@ type MockTangy_PythonPackageVersionsGet_Call struct {
 //   - ctx context.Context
 //   - repositoryHref string
 //   - nameNormalized string
-func (_e *MockTangy_Expecter) PythonPackageVersionsGet(ctx any, repositoryHref any, nameNormalized any) *MockTangy_PythonPackageVersionsGet_Call {
+func (_e *MockTangy_Expecter) PythonPackageVersionsGet(ctx interface{}, repositoryHref interface{}, nameNormalized interface{}) *MockTangy_PythonPackageVersionsGet_Call {
 	return &MockTangy_PythonPackageVersionsGet_Call{Call: _e.mock.On("PythonPackageVersionsGet", ctx, repositoryHref, nameNormalized)}
 }
 
@@ -1122,7 +1122,7 @@ type MockTangy_PythonRepositoryMetrics_Call struct {
 // PythonRepositoryMetrics is a helper method to define mock.On call
 //   - ctx context.Context
 //   - repositoryHref string
-func (_e *MockTangy_Expecter) PythonRepositoryMetrics(ctx any, repositoryHref any) *MockTangy_PythonRepositoryMetrics_Call {
+func (_e *MockTangy_Expecter) PythonRepositoryMetrics(ctx interface{}, repositoryHref interface{}) *MockTangy_PythonRepositoryMetrics_Call {
 	return &MockTangy_PythonRepositoryMetrics_Call{Call: _e.mock.On("PythonRepositoryMetrics", ctx, repositoryHref)}
 }
 
@@ -1192,7 +1192,7 @@ type MockTangy_RpmRepositoryVersionEnvironmentSearch_Call struct {
 //   - hrefs []string
 //   - search string
 //   - limit int
-func (_e *MockTangy_Expecter) RpmRepositoryVersionEnvironmentSearch(ctx any, hrefs any, search any, limit any) *MockTangy_RpmRepositoryVersionEnvironmentSearch_Call {
+func (_e *MockTangy_Expecter) RpmRepositoryVersionEnvironmentSearch(ctx interface{}, hrefs interface{}, search interface{}, limit interface{}) *MockTangy_RpmRepositoryVersionEnvironmentSearch_Call {
 	return &MockTangy_RpmRepositoryVersionEnvironmentSearch_Call{Call: _e.mock.On("RpmRepositoryVersionEnvironmentSearch", ctx, hrefs, search, limit)}
 }
 
@@ -1230,6 +1230,74 @@ func (_c *MockTangy_RpmRepositoryVersionEnvironmentSearch_Call) Return(rpmEnviro
 }
 
 func (_c *MockTangy_RpmRepositoryVersionEnvironmentSearch_Call) RunAndReturn(run func(ctx context.Context, hrefs []string, search string, limit int) ([]RpmEnvironmentSearch, error)) *MockTangy_RpmRepositoryVersionEnvironmentSearch_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RpmRepositoryVersionErrataIDs provides a mock function for the type MockTangy
+func (_mock *MockTangy) RpmRepositoryVersionErrataIDs(ctx context.Context, hrefs []string) ([]string, error) {
+	ret := _mock.Called(ctx, hrefs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RpmRepositoryVersionErrataIDs")
+	}
+
+	var r0 []string
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []string) ([]string, error)); ok {
+		return returnFunc(ctx, hrefs)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []string) []string); ok {
+		r0 = returnFunc(ctx, hrefs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, []string) error); ok {
+		r1 = returnFunc(ctx, hrefs)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTangy_RpmRepositoryVersionErrataIDs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RpmRepositoryVersionErrataIDs'
+type MockTangy_RpmRepositoryVersionErrataIDs_Call struct {
+	*mock.Call
+}
+
+// RpmRepositoryVersionErrataIDs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - hrefs []string
+func (_e *MockTangy_Expecter) RpmRepositoryVersionErrataIDs(ctx interface{}, hrefs interface{}) *MockTangy_RpmRepositoryVersionErrataIDs_Call {
+	return &MockTangy_RpmRepositoryVersionErrataIDs_Call{Call: _e.mock.On("RpmRepositoryVersionErrataIDs", ctx, hrefs)}
+}
+
+func (_c *MockTangy_RpmRepositoryVersionErrataIDs_Call) Run(run func(ctx context.Context, hrefs []string)) *MockTangy_RpmRepositoryVersionErrataIDs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 []string
+		if args[1] != nil {
+			arg1 = args[1].([]string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTangy_RpmRepositoryVersionErrataIDs_Call) Return(strings []string, err error) *MockTangy_RpmRepositoryVersionErrataIDs_Call {
+	_c.Call.Return(strings, err)
+	return _c
+}
+
+func (_c *MockTangy_RpmRepositoryVersionErrataIDs_Call) RunAndReturn(run func(ctx context.Context, hrefs []string) ([]string, error)) *MockTangy_RpmRepositoryVersionErrataIDs_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1278,7 +1346,7 @@ type MockTangy_RpmRepositoryVersionErrataList_Call struct {
 //   - hrefs []string
 //   - filterOpts ErrataListFilters
 //   - pageOpts PageOptions
-func (_e *MockTangy_Expecter) RpmRepositoryVersionErrataList(ctx any, hrefs any, filterOpts any, pageOpts any) *MockTangy_RpmRepositoryVersionErrataList_Call {
+func (_e *MockTangy_Expecter) RpmRepositoryVersionErrataList(ctx interface{}, hrefs interface{}, filterOpts interface{}, pageOpts interface{}) *MockTangy_RpmRepositoryVersionErrataList_Call {
 	return &MockTangy_RpmRepositoryVersionErrataList_Call{Call: _e.mock.On("RpmRepositoryVersionErrataList", ctx, hrefs, filterOpts, pageOpts)}
 }
 
@@ -1358,7 +1426,7 @@ type MockTangy_RpmRepositoryVersionModuleStreamsList_Call struct {
 //   - hrefs []string
 //   - filterOpts ModuleStreamListFilters
 //   - sortBy string
-func (_e *MockTangy_Expecter) RpmRepositoryVersionModuleStreamsList(ctx any, hrefs any, filterOpts any, sortBy any) *MockTangy_RpmRepositoryVersionModuleStreamsList_Call {
+func (_e *MockTangy_Expecter) RpmRepositoryVersionModuleStreamsList(ctx interface{}, hrefs interface{}, filterOpts interface{}, sortBy interface{}) *MockTangy_RpmRepositoryVersionModuleStreamsList_Call {
 	return &MockTangy_RpmRepositoryVersionModuleStreamsList_Call{Call: _e.mock.On("RpmRepositoryVersionModuleStreamsList", ctx, hrefs, filterOpts, sortBy)}
 }
 
@@ -1438,7 +1506,7 @@ type MockTangy_RpmRepositoryVersionPackageGroupSearch_Call struct {
 //   - hrefs []string
 //   - search string
 //   - limit int
-func (_e *MockTangy_Expecter) RpmRepositoryVersionPackageGroupSearch(ctx any, hrefs any, search any, limit any) *MockTangy_RpmRepositoryVersionPackageGroupSearch_Call {
+func (_e *MockTangy_Expecter) RpmRepositoryVersionPackageGroupSearch(ctx interface{}, hrefs interface{}, search interface{}, limit interface{}) *MockTangy_RpmRepositoryVersionPackageGroupSearch_Call {
 	return &MockTangy_RpmRepositoryVersionPackageGroupSearch_Call{Call: _e.mock.On("RpmRepositoryVersionPackageGroupSearch", ctx, hrefs, search, limit)}
 }
 
@@ -1524,7 +1592,7 @@ type MockTangy_RpmRepositoryVersionPackageList_Call struct {
 //   - hrefs []string
 //   - filterOpts RpmListFilters
 //   - pageOpts PageOptions
-func (_e *MockTangy_Expecter) RpmRepositoryVersionPackageList(ctx any, hrefs any, filterOpts any, pageOpts any) *MockTangy_RpmRepositoryVersionPackageList_Call {
+func (_e *MockTangy_Expecter) RpmRepositoryVersionPackageList(ctx interface{}, hrefs interface{}, filterOpts interface{}, pageOpts interface{}) *MockTangy_RpmRepositoryVersionPackageList_Call {
 	return &MockTangy_RpmRepositoryVersionPackageList_Call{Call: _e.mock.On("RpmRepositoryVersionPackageList", ctx, hrefs, filterOpts, pageOpts)}
 }
 
@@ -1604,7 +1672,7 @@ type MockTangy_RpmRepositoryVersionPackageSearch_Call struct {
 //   - hrefs []string
 //   - search string
 //   - limit int
-func (_e *MockTangy_Expecter) RpmRepositoryVersionPackageSearch(ctx any, hrefs any, search any, limit any) *MockTangy_RpmRepositoryVersionPackageSearch_Call {
+func (_e *MockTangy_Expecter) RpmRepositoryVersionPackageSearch(ctx interface{}, hrefs interface{}, search interface{}, limit interface{}) *MockTangy_RpmRepositoryVersionPackageSearch_Call {
 	return &MockTangy_RpmRepositoryVersionPackageSearch_Call{Call: _e.mock.On("RpmRepositoryVersionPackageSearch", ctx, hrefs, search, limit)}
 }
 

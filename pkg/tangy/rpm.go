@@ -380,6 +380,45 @@ func (t *tangyImpl) RpmRepositoryVersionErrataList(ctx context.Context, hrefs []
 	return errata, countTotal, nil
 }
 
+// RpmRepositoryVersionErrataIDs returns distinct errata IDs (e.g. RHSA-...) for the given
+// repository versions. Unlike RpmRepositoryVersionErrataList, it does not load title,
+// summary, description, dates, severity, or CVE references — intended for callers that
+// only need the advisory ID list (for example Patch template advisory sync).
+func (t *tangyImpl) RpmRepositoryVersionErrataIDs(ctx context.Context, hrefs []string) ([]string, error) {
+	if len(hrefs) == 0 {
+		return []string{}, nil
+	}
+
+	conn, err := t.pool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	repoVerMap, err := parseRepositoryVersionHrefsMap(hrefs)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing repository version hrefs: %w", err)
+	}
+
+	args := pgx.NamedArgs{}
+	innerUnion, err := contentIdsInVersions(ctx, conn, repoVerMap, &args)
+	if err != nil {
+		return nil, err
+	}
+
+	query := `SELECT DISTINCT rp.id FROM rpm_updaterecord rp `
+	rows, err := conn.Query(ctx, query+innerUnion+" ORDER BY rp.id", args)
+	if err != nil {
+		return nil, err
+	}
+
+	ids, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
 // RpmRepositoryVersionModuleStreamsList List Modules streams within a repository version, with pagination, search and an optional name filter
 func (t *tangyImpl) RpmRepositoryVersionModuleStreamsList(ctx context.Context, hrefs []string, filterOpts ModuleStreamListFilters, sortBy string) ([]ModuleStreams, error) {
 	if len(hrefs) == 0 {

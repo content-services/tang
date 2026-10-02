@@ -51,7 +51,13 @@ if err != nil {
 versionHref := "/api/pulp/e1c6bee3/api/v3/repositories/rpm/rpm/018c1c95-4281-76eb-b277-842cbad524f4/versions/1/"
 rows, err := t.RpmRepositoryVersionPackageGroupSearch(context.Background(), []string{versionHref}, "animals", 100)
 if err != nil {
-  return err
+    return err
+}
+
+// Use Tangy to list only errata IDs (no titles/summaries/CVEs) for one or more repository versions
+errataIDs, err := t.RpmRepositoryVersionErrataIDs(context.Background(), []string{versionHref})
+if err != nil {
+    return err
 }
 
 // Use Tangy to list Python packages from the latest version of a repository, grouped by name_normalized
