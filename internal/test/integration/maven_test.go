@@ -2,8 +2,10 @@ package integration
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/content-services/tang/internal/config"
 	"github.com/content-services/tang/internal/zestwrapper"
@@ -50,7 +52,7 @@ func (m *MavenSuite) createTestRepository(t *testing.T) {
 	_, err := m.client.LookupOrCreateDomain(m.domainName)
 	require.NoError(t, err)
 
-	repoHref, remoteHref, err := m.client.CreateRepository(
+	repoHref, _, err := m.client.CreateRepository(
 		m.domainName,
 		testMavenRepoName,
 		testMavenFixtureUrl,
@@ -63,13 +65,40 @@ func (m *MavenSuite) createTestRepository(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	addTask, err := m.client.AddCachedContent(repoHref, remoteHref)
-	require.NoError(t, err)
-
-	_, err = m.client.PollTask(addTask)
-	require.NoError(t, err)
+	// Pull-through downloads are added to the repository automatically.
+	m.waitForPullThroughVersions(t, len(testMavenArtifactPaths))
 
 	m.repositoryHref = repoHref
+}
+
+func (m *MavenSuite) waitForPullThroughVersions(t *testing.T, expected int) {
+	t.Helper()
+
+	deadline := time.Now().Add(30 * time.Second)
+	var latest string
+	for time.Now().Before(deadline) {
+		repo, err := m.client.GetMavenRepositoryByName(m.domainName, testMavenRepoName)
+		require.NoError(t, err)
+		require.NotNil(t, repo)
+		latest = repo.GetLatestVersionHref()
+		if mavenRepositoryVersionNumber(latest) >= expected {
+			return
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	require.Failf(t, "cached maven content was not added", "latest version %s, expected at least %d", latest, expected)
+}
+
+func mavenRepositoryVersionNumber(href string) int {
+	parts := strings.Split(strings.Trim(href, "/"), "/")
+	if len(parts) < 2 || parts[len(parts)-2] != "versions" {
+		return 0
+	}
+	number, err := strconv.Atoi(parts[len(parts)-1])
+	if err != nil {
+		return 0
+	}
+	return number
 }
 
 func TestMavenSuite(t *testing.T) {
