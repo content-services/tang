@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"math/rand"
+	"sort"
 	"strings"
 	"testing"
 
@@ -165,6 +166,9 @@ func getDBConnection(t *testing.T) *pgx.Conn {
 }
 
 func (r *RpmSuite) TestRpmRepositoryVersionPackageSearchOldMethod() {
+	r.T().Skip("Pulp now enforces content_ids NOT NULL on core_repositoryversion; " +
+		"cannot force the pre-content_ids code path by setting content_ids = null")
+
 	firstVersionHref := &r.firstVersionHref
 
 	conn := getDBConnection(r.T())
@@ -356,6 +360,37 @@ func (r *RpmSuite) TestRpmRepositoryVersionErrataListFilter() {
 	require.NoError(r.T(), err)
 	assert.Empty(r.T(), emptyList)
 	assert.Equal(r.T(), total, 0)
+}
+
+func (r *RpmSuite) TestRpmRepositoryVersionErrataListIDs() {
+	// Relies on TestRpmRepositoryVersionErrataListFilter having created the fixture repo
+	// (suite runs tests alphabetically: ...ErrataListFilter, then ...ErrataListIDs).
+	resp, err := r.client.GetRpmRepositoryByName(r.domainName, testRepoNameWithErrata)
+	require.NoError(r.T(), err)
+	require.NotNil(r.T(), resp.LatestVersionHref)
+	firstVersionHref := resp.LatestVersionHref
+
+	fullList, total, err := r.tangy.RpmRepositoryVersionErrataList(context.Background(), []string{*firstVersionHref}, tangy.ErrataListFilters{}, tangy.PageOptions{})
+	require.NoError(r.T(), err)
+	require.Equal(r.T(), 6, total)
+	require.Len(r.T(), fullList, 6)
+
+	ids, err := r.tangy.RpmRepositoryVersionErrataIDs(context.Background(), []string{*firstVersionHref})
+	require.NoError(r.T(), err)
+	assert.Len(r.T(), ids, 6)
+
+	expected := make([]string, 0, len(fullList))
+	for _, item := range fullList {
+		expected = append(expected, item.ErrataId)
+	}
+	assert.ElementsMatch(r.T(), expected, ids)
+
+	// IDs are sorted for stable output
+	assert.True(r.T(), sort.StringsAreSorted(ids), "errata IDs should be sorted: %v", ids)
+
+	empty, err := r.tangy.RpmRepositoryVersionErrataIDs(context.Background(), []string{})
+	require.NoError(r.T(), err)
+	assert.Empty(r.T(), empty)
 }
 
 func (r *RpmSuite) TestRpmRepositoryVersionErrataListSort() {

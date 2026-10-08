@@ -65,6 +65,9 @@ type Tangy interface {
 	RpmRepositoryVersionPackageList(ctx context.Context, hrefs []string, filterOpts RpmListFilters, pageOpts PageOptions) ([]RpmListItem, int, error)
 	RpmRepositoryVersionModuleStreamsList(ctx context.Context, hrefs []string, filterOpts ModuleStreamListFilters, sortBy string) ([]ModuleStreams, error)
 	RpmRepositoryVersionErrataList(ctx context.Context, hrefs []string, filterOpts ErrataListFilters, pageOpts PageOptions) ([]ErrataListItem, int, error)
+	// RpmRepositoryVersionErrataIDs returns distinct errata IDs (e.g. RHSA-...) for the
+	// given repository versions without titles, summaries, descriptions, or CVEs.
+	RpmRepositoryVersionErrataIDs(ctx context.Context, hrefs []string) ([]string, error)
 	PythonPackageList(ctx context.Context, repositoryHref string, filterOpts PythonPackageListFilters, pageOpts PageOptions) (PythonPackageListResponse, error)
 	PythonPackageDetailList(ctx context.Context, repositoryHref string, pageOpts PageOptions) (PythonPackageDetailListResponse, error)
 	PythonDistributionList(ctx context.Context, repositoryHref, nameNormalized, version string, pageOpts PageOptions) (PythonDistributionListResponse, error)
