@@ -58,6 +58,12 @@ if err != nil {
 repositoryHref := "/api/pulp/default/api/v3/repositories/python/python/018c1c95-4281-76eb-b277-842cbad524f4/"
 packages, err := t.PythonPackageList(context.Background(), repositoryHref, tangy.PythonPackageListFilters{Search: "django"}, tangy.PageOptions{Offset: 0, Limit: 10})
 
+// Use Tangy to list Python package metadata for every package in the latest repository version
+details, err := t.PythonPackageDetailList(context.Background(), repositoryHref, tangy.PageOptions{Offset: 0, Limit: 10})
+if err != nil {
+  return err
+}
+
 // Use Tangy to list Maven packages from the latest version of a repository, grouped by group_id and artifact_id
 repositoryHref := "/api/pulp/default/api/v3/repositories/maven/maven/018c1c95-4281-76eb-b277-842cbad524f4/"
 response, err := t.MavenPackageList(context.Background(), repositoryHref, tangy.PageOptions{Offset: 0, Limit: 10})
@@ -127,6 +133,7 @@ See example.go for a complete RPM example.
 Python support queries the `python_pythonpackagecontent` table. Each row is one installable distribution file (wheel, sdist, etc.).
 
 - **`PythonPackageList`** — lists packages in the latest repository version, grouped by `name_normalized`, with all versions and `latest_versions` (most recent `pulp_created` per version). Supports optional `Search` filter on `name` or `name_normalized`. Pagination is done in SQL.
+- **`PythonPackageDetailList`** — lists packages in the latest repository version, grouped by `name_normalized`, with metadata for every version. Each version includes `version`, `license_expression`, `license`, `summary`, `description`, `description_content_type`, `author`, `author_email`, `maintainer`, `maintainer_email`, `project_url`, and `last_updated`. Metadata is taken from one representative distribution (sdist preferred, then most recently synced). Pagination is by package, so a package on the page includes all of its versions. Versions are ordered by PEP 440. The page size defaults to 100. A limit above 100 returns an error. There is no search filter.
 - **`PythonBuildList`** — lists builds (`name_normalized` + `version` pairs) in the latest repository version, optionally filtered by `name_normalized` and `version`. Pagination is done in SQL.
 - **`PythonRepositoryMetrics`** — returns `package_count` (distinct `name_normalized`) and `build_count` (distinct `name_normalized` + `version` pairs) for the latest repository version.
 - **`PythonDistributionList`** — lists distribution files for a given `name_normalized` and `version`. Pagination is done in SQL.

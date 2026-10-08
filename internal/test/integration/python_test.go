@@ -148,6 +148,130 @@ func (p *PythonSuite) TestPythonPackageListEmptyHref() {
 	assert.Zero(p.T(), response.Total)
 }
 
+func (p *PythonSuite) TestPythonPackageDetailList() {
+	detail, err := p.tangy.PythonPackageGet(
+		context.Background(),
+		p.repositoryHref,
+		"shelf-reader",
+		"0.1",
+	)
+	require.NoError(p.T(), err)
+
+	response, err := p.tangy.PythonPackageDetailList(context.Background(), p.repositoryHref, tangy.PageOptions{
+		Offset: 0,
+		Limit:  10,
+	})
+	require.NoError(p.T(), err)
+	require.Len(p.T(), response.Results, 1)
+	assert.Equal(p.T(), 1, response.Total)
+	assert.Equal(p.T(), 10, response.Limit)
+	assert.Zero(p.T(), response.Offset)
+
+	pkg := response.Results[0]
+	assert.Equal(p.T(), detail.Name, pkg.Name)
+	assert.Equal(p.T(), "shelf-reader", pkg.NameNormalized)
+	require.Len(p.T(), pkg.Versions, 1)
+	assertPythonPackageVersionDetailMatches(p.T(), detail, pkg.Versions[0])
+
+	defaultPage, err := p.tangy.PythonPackageDetailList(context.Background(), p.repositoryHref, tangy.PageOptions{})
+	require.NoError(p.T(), err)
+	assert.Equal(p.T(), tangy.PythonPackageDetailListMaxLimit, defaultPage.Limit)
+	assert.Equal(p.T(), 1, defaultPage.Total)
+}
+
+func (p *PythonSuite) TestPythonPackageDetailListPagination() {
+	response, err := p.tangy.PythonPackageDetailList(context.Background(), p.repositoryHref, tangy.PageOptions{
+		Offset: 0,
+		Limit:  1,
+	})
+	require.NoError(p.T(), err)
+	require.Len(p.T(), response.Results, 1)
+	assert.Equal(p.T(), 1, response.Total)
+	assert.Equal(p.T(), 1, response.Limit)
+	require.NotEmpty(p.T(), response.Results[0].Versions)
+
+	response, err = p.tangy.PythonPackageDetailList(context.Background(), p.repositoryHref, tangy.PageOptions{
+		Offset: 1,
+		Limit:  1,
+	})
+	require.NoError(p.T(), err)
+	assert.Empty(p.T(), response.Results)
+	assert.Equal(p.T(), 1, response.Total)
+}
+
+func (p *PythonSuite) TestPythonPackageDetailListEmptyHref() {
+	response, err := p.tangy.PythonPackageDetailList(context.Background(), "", tangy.PageOptions{Limit: 10})
+	require.NoError(p.T(), err)
+	assert.Empty(p.T(), response.Results)
+	assert.Zero(p.T(), response.Total)
+}
+
+func (p *PythonSuite) TestPythonPackageDetailListGroupsVersions() {
+	repoHref, remoteHref, err := p.client.CreateRepository(
+		p.domainName,
+		"idna-detail-list-fixture",
+		testPythonRepoURL,
+		[]string{testPythonMultiVersionPackage},
+		testPythonMultiVersionKeepCount,
+	)
+	require.NoError(p.T(), err)
+
+	syncTask, err := p.client.SyncPythonRepository(repoHref, remoteHref)
+	require.NoError(p.T(), err)
+
+	_, err = p.client.PollTask(syncTask)
+	require.NoError(p.T(), err)
+
+	details, err := p.tangy.PythonPackageVersionsGet(
+		context.Background(),
+		repoHref,
+		testPythonMultiVersionPackage,
+	)
+	require.NoError(p.T(), err)
+	require.GreaterOrEqual(p.T(), len(details), 2)
+
+	response, err := p.tangy.PythonPackageDetailList(context.Background(), repoHref, tangy.PageOptions{
+		Offset: 0,
+		Limit:  1,
+	})
+	require.NoError(p.T(), err)
+	require.Len(p.T(), response.Results, 1)
+	assert.Equal(p.T(), 1, response.Total)
+
+	pkg := response.Results[0]
+	assert.Equal(p.T(), details[0].Name, pkg.Name)
+	assert.Equal(p.T(), testPythonMultiVersionPackage, pkg.NameNormalized)
+	require.Len(p.T(), pkg.Versions, len(details))
+	for i, detail := range details {
+		assertPythonPackageVersionDetailMatches(p.T(), detail, pkg.Versions[i])
+	}
+
+	nextPage, err := p.tangy.PythonPackageDetailList(context.Background(), repoHref, tangy.PageOptions{
+		Offset: 1,
+		Limit:  1,
+	})
+	require.NoError(p.T(), err)
+	assert.Empty(p.T(), nextPage.Results)
+	assert.Equal(p.T(), 1, nextPage.Total)
+}
+
+func assertPythonPackageVersionDetailMatches(t *testing.T, detail tangy.PythonPackageDetail, version tangy.PythonPackageVersionDetail) {
+	t.Helper()
+
+	assert.Equal(t, detail.Version, version.Version)
+	assert.Equal(t, detail.LicenseExpression, version.LicenseExpression)
+	assert.Equal(t, detail.License, version.License)
+	assert.Equal(t, detail.Summary, version.Summary)
+	assert.Equal(t, detail.Description, version.Description)
+	assert.Equal(t, detail.DescriptionContentType, version.DescriptionContentType)
+	assert.Equal(t, detail.Author, version.Author)
+	assert.Equal(t, detail.AuthorEmail, version.AuthorEmail)
+	assert.Equal(t, detail.Maintainer, version.Maintainer)
+	assert.Equal(t, detail.MaintainerEmail, version.MaintainerEmail)
+	assert.Equal(t, detail.ProjectURL, version.ProjectURL)
+	assert.Equal(t, detail.LastUpdated, version.LastUpdated)
+}
+
 func (p *PythonSuite) TestPythonDistributionList() {
 	response, err := p.tangy.PythonDistributionList(
 		context.Background(),

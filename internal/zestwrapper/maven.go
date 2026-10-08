@@ -115,11 +115,39 @@ func (m *MavenZest) CreateRepository(domain, name, remoteURL, distributionBasePa
 		return "", "", err
 	}
 
-	if _, err := m.PollTask(distResp.Task); err != nil {
+	task, err := m.PollTask(distResp.Task)
+	if err != nil {
+		return "", "", err
+	}
+
+	created := task.GetCreatedResources()
+	if len(created) == 0 {
+		return "", "", fmt.Errorf("maven distribution create task returned no resources")
+	}
+	if err := m.clearDistributionContentGuard(created[0]); err != nil {
 		return "", "", err
 	}
 
 	return *repoResponse.PulpHref, *remoteResponse.PulpHref, nil
+}
+
+// clearDistributionContentGuard removes the content guard Pulp attaches to a new distribution.
+// The integration test fetches artifacts anonymously through the content app.
+func (m *MavenZest) clearDistributionContentGuard(distributionHref string) error {
+	patch := zest.NewPatchedmavenMavenDistribution()
+	patch.SetContentGuardNil()
+
+	resp, httpResp, err := m.client.DistributionsMavenAPI.DistributionsMavenMavenPartialUpdate(m.ctx, normalizePulpHref(distributionHref)).
+		PatchedmavenMavenDistribution(*patch).Execute()
+	if httpResp != nil {
+		defer httpResp.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+
+	_, err = m.PollTask(resp.Task)
+	return err
 }
 
 // FetchArtifact triggers pull-through caching for an artifact path via the content app.

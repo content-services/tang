@@ -53,7 +53,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.password", "")
 	v.SetDefault("server.storage_type", "")
 	v.SetDefault("server.download_policy", "")
-	v.SetDefault("server.content_path_prefix", "/api/pulp-content/")
+	v.SetDefault("server.content_path_prefix", "/pulp/content/")
 }
 
 // Server configuration options for connecting to a pulp server

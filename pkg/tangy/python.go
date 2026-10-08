@@ -36,6 +36,36 @@ type PythonPackageListFilters struct {
 	Search string
 }
 
+// PythonPackageVersionDetail is metadata for one version of a package.
+// It is taken from one representative distribution (sdist preferred, then most recently synced).
+type PythonPackageVersionDetail struct {
+	Version                string `json:"version"`
+	LicenseExpression      string `json:"license_expression"`
+	License                string `json:"license"`
+	Summary                string `json:"summary"`
+	Description            string `json:"description"`
+	DescriptionContentType string `json:"description_content_type"`
+	Author                 string `json:"author"`
+	AuthorEmail            string `json:"author_email"`
+	Maintainer             string `json:"maintainer"`
+	MaintainerEmail        string `json:"maintainer_email"`
+	ProjectURL             string `json:"project_url"`
+	LastUpdated            string `json:"last_updated"`
+}
+
+type PythonPackageDetailListItem struct {
+	Name           string                       `json:"name"`
+	NameNormalized string                       `json:"name_normalized"`
+	Versions       []PythonPackageVersionDetail `json:"versions"`
+}
+
+type PythonPackageDetailListResponse struct {
+	Results []PythonPackageDetailListItem `json:"results"`
+	Total   int                           `json:"total"`
+	Limit   int                           `json:"limit"`
+	Offset  int                           `json:"offset"`
+}
+
 type PythonBuildListItem struct {
 	Name           string `json:"name"`
 	NameNormalized string `json:"name_normalized"`
@@ -104,8 +134,9 @@ type PythonPackageDetail struct {
 }
 
 var (
-	ErrPythonPackageNotFound        = errors.New("python package not found")
-	ErrPythonNameNormalizedRequired = errors.New("name_normalized is required")
+	ErrPythonPackageNotFound                = errors.New("python package not found")
+	ErrPythonNameNormalizedRequired         = errors.New("name_normalized is required")
+	ErrPythonPackageDetailListLimitExceeded = errors.New("python package detail list limit exceeds maximum")
 )
 
 type pythonPackageVersionRow struct {
@@ -157,6 +188,23 @@ type pythonPackageDetailRow struct {
 	LastUpdated            time.Time
 	Versions               []string
 	LatestVersionsJSON     []byte
+}
+
+type pythonPackageDetailListRow struct {
+	Name                   string
+	NameNormalized         string
+	Version                string
+	Summary                string
+	Description            string
+	DescriptionContentType string
+	Author                 string
+	AuthorEmail            string
+	Maintainer             string
+	MaintainerEmail        string
+	License                string
+	LicenseExpression      string
+	ProjectURL             string
+	LastUpdated            time.Time
 }
 
 // PythonPackageList lists Python packages from the latest version of a repository,
@@ -253,6 +301,127 @@ func (t *tangyImpl) PythonPackageList(ctx context.Context, repositoryHref string
 
 	return PythonPackageListResponse{
 		Results: assemblePythonPackageListFromRows(versionRows),
+		Total:   countTotal,
+		Limit:   pageOpts.Limit,
+		Offset:  pageOpts.Offset,
+	}, nil
+}
+
+// PythonPackageDetailListMaxLimit is the largest page size PythonPackageDetailList accepts.
+// A limit of 0 uses this value. A limit above it returns ErrPythonPackageDetailListLimitExceeded.
+const PythonPackageDetailListMaxLimit = 100
+
+// PythonPackageDetailList lists Python packages from the latest version of a repository,
+// grouped by name_normalized, with metadata for every version of each package.
+// Metadata for each version is taken from one representative distribution (sdist preferred,
+// then most recently synced). Pagination is by package, so a package on the page includes
+// all of its versions. Versions are ordered by PEP 440. There is no search filter.
+// The page size defaults to PythonPackageDetailListMaxLimit. A larger limit returns
+// ErrPythonPackageDetailListLimitExceeded.
+func (t *tangyImpl) PythonPackageDetailList(ctx context.Context, repositoryHref string, pageOpts PageOptions) (PythonPackageDetailListResponse, error) {
+	limit, err := normalizePythonPackageDetailListLimit(pageOpts.Limit)
+	if err != nil {
+		return PythonPackageDetailListResponse{}, err
+	}
+	pageOpts.Limit = limit
+
+	if repositoryHref == "" {
+		return PythonPackageDetailListResponse{}, nil
+	}
+
+	conn, err := t.pool.Acquire(ctx)
+	if err != nil {
+		return PythonPackageDetailListResponse{}, err
+	}
+	defer conn.Release()
+
+	repoUUID, err := parsePythonRepositoryHref(repositoryHref)
+	if err != nil {
+		return PythonPackageDetailListResponse{}, fmt.Errorf("error parsing repository href: %w", err)
+	}
+
+	latestVersion, err := getLatestPythonRepositoryVersion(ctx, conn, repoUUID)
+	if err != nil {
+		return PythonPackageDetailListResponse{}, fmt.Errorf("error getting latest repository version: %w", err)
+	}
+
+	repoVerMap := []ParsedRepoVersion{{
+		RepositoryUUID: repoUUID,
+		Version:        latestVersion,
+	}}
+
+	args := pgx.NamedArgs{
+		"limit":  pageOpts.Limit,
+		"offset": pageOpts.Offset,
+	}
+	innerUnion, err := contentIdsInVersions(ctx, conn, repoVerMap, &args)
+	if err != nil {
+		return PythonPackageDetailListResponse{}, err
+	}
+
+	countQuery := `
+		SELECT COUNT(DISTINCT rp.name_normalized)
+		FROM python_pythonpackagecontent rp
+	` + innerUnion
+
+	var countTotal int
+	err = conn.QueryRow(ctx, countQuery, args).Scan(&countTotal)
+	if err != nil {
+		return PythonPackageDetailListResponse{}, err
+	}
+
+	query := `
+		WITH paginated_packages AS (
+			SELECT rp.name_normalized
+			FROM python_pythonpackagecontent rp
+	` + innerUnion + `
+			GROUP BY rp.name_normalized
+			ORDER BY rp.name_normalized
+			LIMIT @limit OFFSET @offset
+		),
+		filtered AS (
+			SELECT rp.name, rp.name_normalized, rp.version, rp.summary, rp.description,
+			       rp.description_content_type, rp.author, rp.author_email,
+			       rp.maintainer, rp.maintainer_email, rp.license, rp.license_expression,
+			       rp.project_url, rp.packagetype, cc.pulp_created
+			FROM python_pythonpackagecontent rp
+			INNER JOIN core_content cc ON rp.content_ptr_id = cc.pulp_id
+	` + innerUnion + `
+			AND rp.name_normalized IN (SELECT name_normalized FROM paginated_packages)
+		),
+		detail AS (
+			SELECT f.name, f.name_normalized, f.version, f.summary, f.description,
+			       f.description_content_type, f.author, f.author_email,
+			       f.maintainer, f.maintainer_email, f.license, f.license_expression,
+			       f.project_url,
+			       MAX(f.pulp_created) OVER (PARTITION BY f.name_normalized, f.version) AS last_updated,
+			       ROW_NUMBER() OVER (
+			           PARTITION BY f.name_normalized, f.version
+			           ORDER BY CASE WHEN f.packagetype = 'sdist' THEN 0 ELSE 1 END,
+			                    f.pulp_created DESC
+			       ) AS rn
+			FROM filtered f
+		)
+		SELECT d.name, d.name_normalized, d.version, d.summary, d.description,
+		       d.description_content_type, d.author, d.author_email,
+		       d.maintainer, d.maintainer_email, d.license, d.license_expression,
+		       d.project_url, d.last_updated
+		FROM detail d
+		WHERE d.rn = 1
+		ORDER BY d.name_normalized, d.version`
+
+	rows, err := conn.Query(ctx, query, args)
+	if err != nil {
+		return PythonPackageDetailListResponse{}, err
+	}
+
+	detailRows, err := pgx.CollectRows(rows, pgx.RowToStructByName[pythonPackageDetailListRow])
+	if err != nil {
+		return PythonPackageDetailListResponse{}, err
+	}
+
+	return PythonPackageDetailListResponse{
+		Results: assemblePythonPackageDetailListFromRows(detailRows),
 		Total:   countTotal,
 		Limit:   pageOpts.Limit,
 		Offset:  pageOpts.Offset,
@@ -853,6 +1022,63 @@ func parsePythonJSONStringMap(data []byte) map[string]string {
 		return nil
 	}
 	return values
+}
+
+func pythonPackageVersionDetailFromRow(row pythonPackageDetailListRow) PythonPackageVersionDetail {
+	return PythonPackageVersionDetail{
+		Version:                row.Version,
+		LicenseExpression:      row.LicenseExpression,
+		License:                row.License,
+		Summary:                row.Summary,
+		Description:            row.Description,
+		DescriptionContentType: row.DescriptionContentType,
+		Author:                 parsePythonAuthor(row.Author, row.AuthorEmail),
+		AuthorEmail:            row.AuthorEmail,
+		Maintainer:             row.Maintainer,
+		MaintainerEmail:        row.MaintainerEmail,
+		ProjectURL:             row.ProjectURL,
+		LastUpdated:            row.LastUpdated.Format(time.RFC3339),
+	}
+}
+
+func assemblePythonPackageDetailListFromRows(rows []pythonPackageDetailListRow) []PythonPackageDetailListItem {
+	if len(rows) == 0 {
+		return nil
+	}
+
+	results := make([]PythonPackageDetailListItem, 0)
+	var current PythonPackageDetailListItem
+
+	for i, row := range rows {
+		version := pythonPackageVersionDetailFromRow(row)
+		if i == 0 || row.NameNormalized != current.NameNormalized {
+			if i > 0 {
+				sortPythonPackageVersionDetails(current.Versions)
+				results = append(results, current)
+			}
+			current = PythonPackageDetailListItem{
+				Name:           row.Name,
+				NameNormalized: row.NameNormalized,
+				Versions:       []PythonPackageVersionDetail{version},
+			}
+			continue
+		}
+
+		current.Versions = append(current.Versions, version)
+	}
+
+	sortPythonPackageVersionDetails(current.Versions)
+	return append(results, current)
+}
+
+func normalizePythonPackageDetailListLimit(limit int) (int, error) {
+	if limit <= 0 {
+		return PythonPackageDetailListMaxLimit, nil
+	}
+	if limit > PythonPackageDetailListMaxLimit {
+		return 0, fmt.Errorf("%w of %d", ErrPythonPackageDetailListLimitExceeded, PythonPackageDetailListMaxLimit)
+	}
+	return limit, nil
 }
 
 func assemblePythonPackageListFromRows(rows []pythonPackageVersionRow) []PythonPackageListItem {

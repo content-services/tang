@@ -14,4 +14,4 @@ server:
   password: "password"
   storage_type: "local"
   download_policy: "on_demand"
-  content_path_prefix: "/api/pulp-content/"
+  content_path_prefix: "/pulp/content/"

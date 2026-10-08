@@ -139,6 +139,214 @@ func TestAssemblePythonPackageListFromRows(t *testing.T) {
 	}
 }
 
+func TestAssemblePythonPackageDetailListFromRows(t *testing.T) {
+	t.Parallel()
+
+	updatedAt1 := time.Date(2023, 4, 3, 12, 0, 0, 0, time.UTC)
+	updatedAt2 := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name string
+		rows []pythonPackageDetailListRow
+		want []PythonPackageDetailListItem
+	}{
+		{
+			name: "empty rows",
+			rows: nil,
+			want: nil,
+		},
+		{
+			name: "groups versions and keeps version specific fields",
+			rows: []pythonPackageDetailListRow{
+				{
+					Name:                   "Django",
+					NameNormalized:         "django",
+					Version:                "4.2",
+					LicenseExpression:      "BSD-3-Clause",
+					License:                "BSD",
+					Summary:                "A high-level Python web framework",
+					Description:            "Django 4.2",
+					DescriptionContentType: "text/x-rst",
+					Author:                 "Django Software Foundation",
+					AuthorEmail:            "foundation@djangoproject.com",
+					ProjectURL:             "https://www.djangoproject.com/",
+					LastUpdated:            updatedAt1,
+				},
+				{
+					Name:                   "Django",
+					NameNormalized:         "django",
+					Version:                "5.0",
+					LicenseExpression:      "BSD-3-Clause",
+					License:                "BSD-3-Clause",
+					Summary:                "A high-level Python web framework",
+					Description:            "Django 5.0",
+					DescriptionContentType: "text/x-rst",
+					Author:                 "",
+					AuthorEmail:            "Django Software Foundation <foundation@djangoproject.com>",
+					Maintainer:             "Django Software Foundation",
+					MaintainerEmail:        "foundation@djangoproject.com",
+					ProjectURL:             "https://www.djangoproject.com/",
+					LastUpdated:            updatedAt2,
+				},
+			},
+			want: []PythonPackageDetailListItem{
+				{
+					Name:           "Django",
+					NameNormalized: "django",
+					Versions: []PythonPackageVersionDetail{
+						{
+							Version:                "4.2",
+							LicenseExpression:      "BSD-3-Clause",
+							License:                "BSD",
+							Summary:                "A high-level Python web framework",
+							Description:            "Django 4.2",
+							DescriptionContentType: "text/x-rst",
+							Author:                 "Django Software Foundation",
+							AuthorEmail:            "foundation@djangoproject.com",
+							ProjectURL:             "https://www.djangoproject.com/",
+							LastUpdated:            updatedAt1.Format(time.RFC3339),
+						},
+						{
+							Version:                "5.0",
+							LicenseExpression:      "BSD-3-Clause",
+							License:                "BSD-3-Clause",
+							Summary:                "A high-level Python web framework",
+							Description:            "Django 5.0",
+							DescriptionContentType: "text/x-rst",
+							Author:                 "Django Software Foundation",
+							AuthorEmail:            "Django Software Foundation <foundation@djangoproject.com>",
+							Maintainer:             "Django Software Foundation",
+							MaintainerEmail:        "foundation@djangoproject.com",
+							ProjectURL:             "https://www.djangoproject.com/",
+							LastUpdated:            updatedAt2.Format(time.RFC3339),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "orders versions by pep 440",
+			rows: []pythonPackageDetailListRow{
+				{Name: "demo", NameNormalized: "demo", Version: "1.10", LastUpdated: updatedAt1},
+				{Name: "demo", NameNormalized: "demo", Version: "1.9", LastUpdated: updatedAt1},
+				{Name: "demo", NameNormalized: "demo", Version: "1.2", LastUpdated: updatedAt2},
+			},
+			want: []PythonPackageDetailListItem{
+				{
+					Name:           "demo",
+					NameNormalized: "demo",
+					Versions: []PythonPackageVersionDetail{
+						{Version: "1.2", LastUpdated: updatedAt2.Format(time.RFC3339)},
+						{Version: "1.9", LastUpdated: updatedAt1.Format(time.RFC3339)},
+						{Version: "1.10", LastUpdated: updatedAt1.Format(time.RFC3339)},
+					},
+				},
+			},
+		},
+		{
+			name: "multiple packages",
+			rows: []pythonPackageDetailListRow{
+				{
+					Name:           "Django",
+					NameNormalized: "django",
+					Version:        "5.0",
+					Summary:        "A high-level Python web framework",
+					LastUpdated:    updatedAt2,
+				},
+				{
+					Name:           "requests",
+					NameNormalized: "requests",
+					Version:        "2.31.0",
+					Summary:        "Python HTTP for Humans.",
+					LastUpdated:    updatedAt1,
+				},
+			},
+			want: []PythonPackageDetailListItem{
+				{
+					Name:           "Django",
+					NameNormalized: "django",
+					Versions: []PythonPackageVersionDetail{
+						{
+							Version:     "5.0",
+							Summary:     "A high-level Python web framework",
+							LastUpdated: updatedAt2.Format(time.RFC3339),
+						},
+					},
+				},
+				{
+					Name:           "requests",
+					NameNormalized: "requests",
+					Versions: []PythonPackageVersionDetail{
+						{
+							Version:     "2.31.0",
+							Summary:     "Python HTTP for Humans.",
+							LastUpdated: updatedAt1.Format(time.RFC3339),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := assemblePythonPackageDetailListFromRows(tt.rows)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestComparePythonVersions(t *testing.T) {
+	t.Parallel()
+
+	ordered := []string{
+		"1.0.dev1",
+		"1.0a1",
+		"1.0b1",
+		"1.0rc1",
+		"1.0",
+		"1.0.post1",
+		"1.2",
+		"1.9",
+		"1.10",
+		"2.0",
+	}
+
+	for i := 0; i < len(ordered); i++ {
+		for j := i + 1; j < len(ordered); j++ {
+			assert.Negative(t, comparePythonVersions(ordered[i], ordered[j]), "%s should sort before %s", ordered[i], ordered[j])
+		}
+	}
+
+	assert.Zero(t, comparePythonVersions("1.0", "1.0.0"))
+	assert.Zero(t, comparePythonVersions("1.0c1", "1.0rc1"))
+	assert.Negative(t, comparePythonVersions("1.0", "not-a-version"))
+}
+
+func TestNormalizePythonPackageDetailListLimit(t *testing.T) {
+	t.Parallel()
+
+	got, err := normalizePythonPackageDetailListLimit(0)
+	require.NoError(t, err)
+	assert.Equal(t, PythonPackageDetailListMaxLimit, got)
+
+	got, err = normalizePythonPackageDetailListLimit(10)
+	require.NoError(t, err)
+	assert.Equal(t, 10, got)
+
+	got, err = normalizePythonPackageDetailListLimit(PythonPackageDetailListMaxLimit)
+	require.NoError(t, err)
+	assert.Equal(t, PythonPackageDetailListMaxLimit, got)
+
+	_, err = normalizePythonPackageDetailListLimit(PythonPackageDetailListMaxLimit + 1)
+	require.ErrorIs(t, err, ErrPythonPackageDetailListLimitExceeded)
+
+	_, err = normalizePythonPackageDetailListLimit(500)
+	require.ErrorIs(t, err, ErrPythonPackageDetailListLimitExceeded)
+}
+
 func TestMockTangyPythonPackageList(t *testing.T) {
 	t.Parallel()
 
@@ -167,6 +375,42 @@ func TestMockTangyPythonPackageList(t *testing.T) {
 	mockTangy.On("PythonPackageList", ctx, repoHref, filterOpts, pageOpts).Return(expected, nil)
 
 	got, err := mockTangy.PythonPackageList(ctx, repoHref, filterOpts, pageOpts)
+	require.NoError(t, err)
+	assert.Equal(t, expected, got)
+}
+
+func TestMockTangyPythonPackageDetailList(t *testing.T) {
+	t.Parallel()
+
+	mockTangy := NewMockTangy(t)
+	ctx := context.Background()
+	repoHref := "/api/pulp/default/api/v3/repositories/python/python/018c1c95-4281-76eb-b277-842cbad524f4/"
+	pageOpts := PageOptions{Offset: 0, Limit: 10}
+
+	expected := PythonPackageDetailListResponse{
+		Results: []PythonPackageDetailListItem{
+			{
+				Name:           "Django",
+				NameNormalized: "django",
+				Versions: []PythonPackageVersionDetail{
+					{
+						Version:           "5.0",
+						LicenseExpression: "BSD-3-Clause",
+						License:           "BSD-3-Clause",
+						Summary:           "A high-level Python web framework",
+						LastUpdated:       "2024-01-01T12:00:00Z",
+					},
+				},
+			},
+		},
+		Total:  1,
+		Limit:  10,
+		Offset: 0,
+	}
+
+	mockTangy.On("PythonPackageDetailList", ctx, repoHref, pageOpts).Return(expected, nil)
+
+	got, err := mockTangy.PythonPackageDetailList(ctx, repoHref, pageOpts)
 	require.NoError(t, err)
 	assert.Equal(t, expected, got)
 }

@@ -170,10 +170,13 @@ func (r *RpmSuite) TestRpmRepositoryVersionPackageSearchOldMethod() {
 	conn := getDBConnection(r.T())
 	defer conn.Close(context.Background())
 
-	// Update the repository version to use the old method
+	// Update the repository version to use the old method. Current Pulp rejects a null
+	// content_ids, so drop that constraint for this fixture.
 	splitHref := strings.Split(*firstVersionHref, "/")
 	repoId := splitHref[len(splitHref)-4] // ignore trailing  versions//1/
-	_, err := conn.Exec(context.Background(), "UPDATE core_repositoryversion SET content_ids = null WHERE repository_id = $1", repoId)
+	_, err := conn.Exec(context.Background(), "ALTER TABLE core_repositoryversion ALTER COLUMN content_ids DROP NOT NULL")
+	require.NoError(r.T(), err)
+	_, err = conn.Exec(context.Background(), "UPDATE core_repositoryversion SET content_ids = null WHERE repository_id = $1", repoId)
 	require.NoError(r.T(), err)
 
 	search, err := r.tangy.RpmRepositoryVersionPackageSearch(context.Background(), []string{*firstVersionHref}, "peng", 100)
